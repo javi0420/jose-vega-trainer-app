@@ -1,0 +1,131 @@
+
+Running 7 tests using 1 worker
+
+[1A[2K[1/7] [chromium] › e2e\accent-insensitive-search.spec.js:24:3 › Accent-Insensitive Search › Search in Exercise Catalog handles accents correctly
+[1A[2K[2/7] [chromium] › e2e\accent-insensitive-search.spec.js:94:3 › Accent-Insensitive Search › Search in Workout Editor handles accents correctly
+[1A[2K[chromium] › e2e\accent-insensitive-search.spec.js:94:3 › Accent-Insensitive Search › Search in Workout Editor handles accents correctly
+Logging in as Client...
+
+[1A[2KNavigating to New Workout...
+
+[1A[2KTesting search in modal...
+
+[1A[2KFound exercise name: Press Banca
+
+[1A[2KSearching with normalized term: PRESS BANCA
+
+[1A[2KSearch verification successful!
+
+[1A[2K[3/7] [chromium] › e2e\atomic-save.spec.js:3:3 › Atomic Workout Save - Full Flow › should login, create workout with 10 exercises, save atomically, and verify in summary
+[1A[2K[chromium] › e2e\atomic-save.spec.js:3:3 › Atomic Workout Save - Full Flow › should login, create workout with 10 exercises, save atomically, and verify in summary
+Adding exercise 1/10 (searching: Press)...
+
+[1A[2K  1) [chromium] › e2e\atomic-save.spec.js:3:3 › Atomic Workout Save - Full Flow › should login, create workout with 10 exercises, save atomically, and verify in summary 
+
+    [31mTest timeout of 120000ms exceeded.[39m
+
+    Error: page.waitForResponse: Test timeout of 120000ms exceeded.
+
+      60 |
+      61 |             // Search for DIFFERENT exercise each time
+    > 62 |             const searchPromise = page.waitForResponse(resp => resp.url().includes('/rest/v1/exercises') && resp.request().method() === 'GET');
+         |                                        ^
+      63 |             await page.getByPlaceholder('Buscar ejercicio...').pressSequentially(searchTerms[i], { delay: 50 });
+      64 |             await searchPromise; // Wait for results to be fetched from DB
+      65 |
+        at C:\Users\Lindo\Documents\Proyectos\irontrack-app\e2e\atomic-save.spec.js:62:40
+
+    Error Context: test-results\e2e-atomic-save-Atomic-Wor-6e292-cally-and-verify-in-summary-chromium\error-context.md
+
+
+[1A[2K[4/7] [chromium] › e2e\data-integrity.spec.js:28:3 › Data Integrity & Soft Delete Flow › Should archive exercise used in routine without breaking data integrity
+[1A[2K[chromium] › e2e\data-integrity.spec.js:28:3 › Data Integrity & Soft Delete Flow › Should archive exercise used in routine without breaking data integrity
+--- Step 1: Create Exercise ---
+
+[1A[2KBROWSER CONSOLE: [vite] connecting...
+
+[1A[2KBROWSER CONSOLE: [vite] connected.
+
+[1A[2KBROWSER CONSOLE: %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold
+
+[1A[2KBROWSER CONSOLE: DEBUG: Conectando a Supabase en: http://127.0.0.1:55321
+
+[1A[2KBROWSER CONSOLE: ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+[1A[2KBROWSER CONSOLE: ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+[1A[2KBROWSER CONSOLE: DEBUG: Auth Event: INITIAL_SESSION
+
+[1A[2KSubmitting exercise...
+
+[1A[2KExercise created successfully.
+
+[1A[2K--- Step 2: Create Routine ---
+
+[1A[2KBROWSER CONSOLE: [vite] connecting...
+
+[1A[2KBROWSER CONSOLE: [vite] connected.
+
+[1A[2KBROWSER CONSOLE: %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold
+
+[1A[2KBROWSER CONSOLE: DEBUG: Conectando a Supabase en: http://127.0.0.1:55321
+
+[1A[2KBROWSER CONSOLE: ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+[1A[2KBROWSER CONSOLE: ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+[1A[2KBROWSER CONSOLE: DEBUG: Auth Event: INITIAL_SESSION
+
+[1A[2KBROWSER CONSOLE: DEBUG routines: undefined Type: undefined Is Array: false
+
+[1A[2KBROWSER CONSOLE: DEBUG routines: undefined Type: undefined Is Array: false
+
+[1A[2KBROWSER CONSOLE: DEBUG routines: [Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object] Type: object Is Array: true
+
+[1A[2KBROWSER CONSOLE: DEBUG routines: [Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object] Type: object Is Array: true
+
+[1A[2KBROWSER CONSOLE: DEBUG routines: [Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object] Type: object Is Array: true
+
+[1A[2KBROWSER CONSOLE: DEBUG routines: [Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object] Type: object Is Array: true
+
+[1A[2KEntering routine detail...
+
+[1A[2KBROWSER CONSOLE: DEBUG routines: [Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object] Type: object Is Array: true
+
+[1A[2KBROWSER CONSOLE: DEBUG routines: [Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object] Type: object Is Array: true
+
+[1A[2KBROWSER CONSOLE: DEBUG routines: [Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object] Type: object Is Array: true
+
+[1A[2KBROWSER CONSOLE: DEBUG routines: [Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object] Type: object Is Array: true
+
+[1A[2KBROWSER CONSOLE: DEBUG: Auth Event: INITIAL_SESSION
+
+[1A[2KSearching for exercise in modal...
+
+[1A[2K  2) [chromium] › e2e\data-integrity.spec.js:28:3 › Data Integrity & Soft Delete Flow › Should archive exercise used in routine without breaking data integrity 
+
+    [31mTest timeout of 90000ms exceeded.[39m
+
+    Error: page.waitForResponse: Test timeout of 90000ms exceeded.
+
+      58 |
+      59 |         console.log('Searching for exercise in modal...');
+    > 60 |         const searchPromise = page.waitForResponse(resp => resp.url().includes('search_exercises'));
+         |                                    ^
+      61 |         await page.getByTestId('routine-exercise-search').pressSequentially(exName, { delay: 50 });
+      62 |         await searchPromise;
+      63 |
+        at C:\Users\Lindo\Documents\Proyectos\irontrack-app\e2e\data-integrity.spec.js:60:36
+
+    Error Context: test-results\e2e-data-integrity-Data-In-2cdbb-out-breaking-data-integrity-chromium\error-context.md
+
+
+[1A[2K[5/7] [chromium] › e2e\exercise-manager.spec.js:31:3 › Feature: Exercise Manager › Trainer can access Exercise Manager page
+[1A[2K[6/7] [chromium] › e2e\exercise-manager.spec.js:43:3 › Feature: Exercise Manager › Trainer can add a new exercise to catalog
+[1A[2K[7/7] [chromium] › e2e\exercise-manager.spec.js:85:3 › Feature: Exercise Manager › Client can use ad-hoc exercise during workout
+[1A[2K  2 failed
+    [chromium] › e2e\atomic-save.spec.js:3:3 › Atomic Workout Save - Full Flow › should login, create workout with 10 exercises, save atomically, and verify in summary 
+    [chromium] › e2e\data-integrity.spec.js:28:3 › Data Integrity & Soft Delete Flow › Should archive exercise used in routine without breaking data integrity 
+  5 passed (3.8m)
+
+[36m  Serving HTML report at http://localhost:54659. Press Ctrl+C to quit.[39m

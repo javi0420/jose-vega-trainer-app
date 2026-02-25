@@ -1,0 +1,25 @@
+# Dependencias y Builds
+node_modules/
+dist/
+dist-ssr/
+
+# Local env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*
+
+# Supabase
+supabase_status.json
+.supabase/
+
+# OS files
+.DS_Store
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/

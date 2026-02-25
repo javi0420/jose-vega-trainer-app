@@ -1,0 +1,29 @@
+project_id = "fitness-app"
+
+[db]
+port = 55322
+shadow_port = 55320
+
+[api]
+port = 55321
+
+[studio]
+port = 55323
+
+[inbucket]
+port = 55324
+
+[analytics]
+port = 55327
+vector_port = 55328
+
+[functions.generate-recovery-link]
+enabled = true
+verify_jwt = false
+import_map = "./functions/generate-recovery-link/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/generate-recovery-link/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/generate-recovery-link/*.html" ]
