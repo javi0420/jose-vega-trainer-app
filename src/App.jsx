@@ -28,6 +28,8 @@ import { useAuth } from './context/AuthContext';
 import { useUserRole } from './hooks/useUserRole';
 import { useOfflineSync } from './hooks/useOfflineSync';
 import { Toaster } from 'react-hot-toast';
+import { useMaintenance } from './hooks/useMaintenance';
+import Maintenance from './pages/Maintenance';
 import { supabase } from './lib/supabase';
 import { useNavigate } from 'react-router-dom';
 
@@ -89,9 +91,11 @@ function App() {
                             <OfflineSyncListener />
                             <AuthListener />
                             <ScrollToTop />
+                            <MaintenanceGuard />
                             <ConsentGuard />
                             <Routes>
                                 <Route path="/" element={<Login />} />
+                                <Route path="/maintenance" element={<MaintenanceView />} />
 
                                 {/* Public Legal Terms Route */}
                                 <Route path="/legal-terms" element={<LegalTerms />} />
@@ -159,6 +163,50 @@ function ConsentGuard() {
     if (!needsConsent) return null;
 
     return <LegalModal />;
+}
+
+// Wrapper for Maintenance page to pass the message
+function MaintenanceView() {
+    const { message } = useMaintenance();
+    return <Maintenance message={message} />;
+}
+
+// Global Maintenance Guard
+function MaintenanceGuard() {
+    const location = useLocation();
+    const { user } = useAuth();
+    const { data: profile } = useUserRole();
+    const { isActive, loading } = useMaintenance();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (loading) return;
+
+        if (!isActive) {
+            if (location.pathname === '/maintenance') {
+                navigate('/', { replace: true });
+            }
+            return;
+        }
+
+        // Exceptions (VIP Pass)
+        const isAdminEmail = user?.email === import.meta.env.VITE_ADMIN_EMAIL;
+        const isAdminRole = profile?.role === 'trainer' || profile?.role === 'admin';
+        
+        if (isAdminEmail || isAdminRole) {
+            return;
+        }
+
+        // Allow login/public pages
+        if (location.pathname === '/' || location.pathname === '/legal-terms' || location.pathname === '/maintenance') {
+            return;
+        }
+
+        // If we get here and it's active, redirect to maintenance
+        navigate('/maintenance', { replace: true });
+    }, [isActive, loading, user, profile?.role, location.pathname, navigate]);
+
+    return null;
 }
 
 export default App
