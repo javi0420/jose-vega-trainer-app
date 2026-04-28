@@ -1,7 +1,30 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Hammer, Wrench, Clock, ShieldAlert } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 const Maintenance = ({ message }) => {
+    const [trainerName, setTrainerName] = useState('IronTrack');
+
+    useEffect(() => {
+        async function fetchTrainerName() {
+            try {
+                const { data } = await supabase
+                    .from('profiles')
+                    .select('full_name')
+                    .eq('role', 'trainer')
+                    .limit(1)
+                    .single();
+                
+                if (data?.full_name) {
+                    setTrainerName(data.full_name);
+                }
+            } catch (err) {
+                console.error('Error fetching trainer name:', err);
+            }
+        }
+        fetchTrainerName();
+    }, []);
+
     return (
         <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 text-center overflow-hidden relative">
             {/* Background Decorative Elements */}
@@ -44,8 +67,8 @@ const Maintenance = ({ message }) => {
                 </div>
             </div>
 
-            <p className="mt-12 text-zinc-600 text-xs tracking-widest uppercase font-medium">
-                IronTrack &copy; 2026
+            <p className="mt-12 text-zinc-600 text-[10px] tracking-[0.3em] uppercase font-black opacity-50">
+                {trainerName} &copy; 2026
             </p>
             
             <style>{`
