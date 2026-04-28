@@ -35,8 +35,119 @@ import AssignRoutineModal from './AssignRoutineModal'
 import ClientRow from './ClientRow'
 import { toast } from 'react-hot-toast'
 import { supabase } from '../lib/supabase'
+import { useMaintenance } from '../hooks/useMaintenance'
+
 
 // --- Sub-components ---
+
+function MaintenanceControl() {
+    const { isActive, message, loading } = useMaintenance()
+    const [localMessage, setLocalMessage] = useState('')
+    const [isUpdating, setIsUpdating] = useState(false)
+
+    // Sincronizar el mensaje local cuando cambia en la DB
+    useEffect(() => {
+        if (message) setLocalMessage(message)
+    }, [message])
+
+    const toggleMaintenance = async () => {
+        try {
+            setIsUpdating(true)
+            const { error } = await supabase
+                .from('app_settings')
+                .update({ is_maintenance_mode: !isActive })
+                .eq('id', 1)
+
+            if (error) throw error
+            toast.success(`Modo mantenimiento ${!isActive ? 'ACTIVADO' : 'DESACTIVADO'}`)
+        } catch (err) {
+            toast.error('Error al actualizar: ' + err.message)
+        } finally {
+            setIsUpdating(false)
+        }
+    }
+
+    const updateMessage = async () => {
+        try {
+            setIsUpdating(true)
+            const { error } = await supabase
+                .from('app_settings')
+                .update({ maintenance_message: localMessage })
+                .eq('id', 1)
+
+            if (error) throw error
+            toast.success('Mensaje actualizado')
+        } catch (err) {
+            toast.error('Error al actualizar mensaje: ' + err.message)
+        } finally {
+            setIsUpdating(false)
+        }
+    }
+
+    if (loading) return (
+        <div className="h-[74px] rounded-2xl bg-gray-900/50 border border-gray-800 animate-pulse" />
+    )
+
+    return (
+        <div className={`
+            flex flex-col rounded-2xl border p-4 transition-all duration-500
+            ${isActive 
+                ? 'bg-red-500/5 border-red-500/20' 
+                : 'bg-gray-900/50 border-gray-800'}
+        `}>
+            <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                    <div className={`
+                        flex h-10 w-10 items-center justify-center rounded-xl transition-colors
+                        ${isActive ? 'bg-red-500/20 text-red-500' : 'bg-gold-500/10 text-gold-500'}
+                    `}>
+                        <ShieldAlert className={`h-5 w-5 ${isActive ? 'animate-pulse' : ''}`} />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-white uppercase tracking-tight text-sm">Modo Mantenimiento</h3>
+                        <p className={`text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-red-400' : 'text-gray-500'}`}>
+                            {isActive ? 'Sistema Bloqueado' : 'Operativo'}
+                        </p>
+                    </div>
+                </div>
+                
+                <button
+                    onClick={toggleMaintenance}
+                    disabled={isUpdating}
+                    className={`
+                        relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none
+                        ${isActive ? 'bg-red-600' : 'bg-gray-700'}
+                    `}
+                >
+                    <span className={`
+                        inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                        ${isActive ? 'translate-x-6' : 'translate-x-1'}
+                    `} />
+                </button>
+            </div>
+
+            {isActive && (
+                <div className="mt-2 flex gap-2 animate-in slide-in-from-top-2 duration-300">
+                    <input
+                        type="text"
+                        value={localMessage}
+                        onChange={(e) => setLocalMessage(e.target.value)}
+                        placeholder="Mensaje para los clientes..."
+                        className="flex-1 rounded-xl bg-black/40 border border-white/5 px-3 py-2 text-xs text-white placeholder-gray-600 focus:border-red-500/50 focus:outline-none"
+                    />
+                    <button
+                        onClick={updateMessage}
+                        disabled={isUpdating || localMessage === message}
+                        className="rounded-xl bg-red-500/20 px-3 py-2 text-[10px] font-black text-red-400 hover:bg-red-500/30 disabled:opacity-30 transition-all uppercase tracking-widest"
+                    >
+                        Actualizar
+                    </button>
+                </div>
+            )}
+        </div>
+    )
+}
+
 
 function StatCard({ label, value, icon: Icon, color, trend }) {
     return (
@@ -351,8 +462,9 @@ export default function TrainerDashboard() {
                     </div>
                 </section>
 
-                {/* Quick Actions */}
-                <section>
+                {/* 2. Quick Actions & Maintenance Control */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Catalog Action */}
                     <button
                         onClick={() => navigate('/app/exercises')}
                         className="flex items-center gap-3 rounded-2xl bg-gray-900/50 border border-gray-800 px-6 py-4 hover:bg-gray-800 hover:border-gold-500/30 transition-all group"
@@ -361,12 +473,15 @@ export default function TrainerDashboard() {
                             <Dumbbell className="h-5 w-5" />
                         </div>
                         <div className="text-left">
-                            <h3 className="font-bold text-white group-hover:text-gold-500 transition-colors">Catálogo de Ejercicios</h3>
-                            <p className="text-xs text-gray-500">Gestionar base de datos global</p>
+                            <h3 className="font-bold text-white group-hover:text-gold-500 transition-colors uppercase tracking-tight text-sm">Catálogo de Ejercicios</h3>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Gestionar base global</p>
                         </div>
                         <ChevronRight className="ml-auto h-5 w-5 text-gray-600 group-hover:text-gold-500" />
                     </button>
-                </section>
+
+                    {/* Maintenance Control Widget */}
+                    <MaintenanceControl />
+                </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* 2. Clients List (Rich) */}
