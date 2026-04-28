@@ -51,6 +51,16 @@ function MaintenanceControl() {
     }, [message])
 
     const toggleMaintenance = async () => {
+        // Solo pedir confirmación al ACTIVAR
+        if (!isActive) {
+            const confirmed = window.confirm(
+                '⚠️ ¿ACTIVAR MODO MANTENIMIENTO?\n\n' +
+                'Si confirmas, todos los clientes serán redirigidos a la pantalla de mantenimiento y NO podrán usar la app hasta que la desactives.\n\n' +
+                '¿Deseas continuar?'
+            );
+            if (!confirmed) return;
+        }
+
         try {
             setIsUpdating(true)
             const { error } = await supabase

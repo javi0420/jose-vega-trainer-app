@@ -79,4 +79,43 @@ test.describe('Maintenance Mode Flow', () => {
         // 3. Verify Realtime recovery (should redirect back to home/login)
         await expect(page).toHaveURL(/.*\//, { timeout: 10000 });
     });
+
+    test('Trainer can toggle maintenance mode from the dashboard UI', async ({ page }) => {
+        // 1. Login as Trainer
+        await page.goto('/');
+        await page.fill('input[type="email"]', trainerEmail);
+        await page.fill('input[type="password"]', 'password123');
+        await page.click('button:has-text("Iniciar Sesión")');
+
+        // 2. Locate Maintenance Widget
+        // We'll wait for the text "Modo Mantenimiento" to appear
+        await expect(page.locator('text=Modo Mantenimiento')).toBeVisible({ timeout: 15000 });
+
+        // 3. Toggle ON from UI
+        // In the UI we have: <button role="switch" ...>
+        const toggle = page.locator('button').filter({ hasText: '' }).last(); // Usually the switch if it's the last button in that section
+        // Better: use the role if available, or class.
+        // Let's use a more specific locator based on the component structure
+        // 3. Toggle ON from UI (Handling confirmation dialog)
+        page.once('dialog', dialog => {
+            console.log(`Dialog message: ${dialog.message()}`);
+            dialog.accept();
+        });
+
+        const switchBtn = page.locator('button:has(span.translate-x-1), button:has(span.translate-x-6)');
+        await switchBtn.click();
+        
+        // 4. Verify in DB via Supabase
+        await expect.poll(async () => {
+            const { data } = await supabase.from('app_settings').select('is_maintenance_mode').eq('id', 1).single();
+            return data.is_maintenance_mode;
+        }, { timeout: 10000 }).toBe(true);
+
+        // 5. Toggle OFF and verify
+        await switchBtn.click();
+        await expect.poll(async () => {
+            const { data } = await supabase.from('app_settings').select('is_maintenance_mode').eq('id', 1).single();
+            return data.is_maintenance_mode;
+        }, { timeout: 10000 }).toBe(false);
+    });
 });
