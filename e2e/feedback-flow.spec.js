@@ -21,6 +21,24 @@ test.describe('Trainer Feedback Priority UI Flow', () => {
         await trainerPage.getByTestId('login-input-email').fill(trainerEmail);
         await trainerPage.getByTestId('login-input-password').fill(password);
         await trainerPage.getByTestId('login-btn-submit').click();
+
+        // Handle Potential Trainer Password Reset (if DB was recently migrated)
+        if (trainerPage.url().includes('update-password')) {
+            console.log('Trainer: Forced reset detected. Handling...');
+            await trainerPage.fill('input[type="password"] >> nth=0', password);
+            await trainerPage.fill('input[type="password"] >> nth=1', password);
+            await trainerPage.click('button:has-text("Actualizar contraseña")');
+            
+            await Promise.race([
+                trainerPage.waitForURL(/.*\/app/, { timeout: 20000 }),
+                expect(trainerPage.locator('text=¡Todo listo!')).toBeVisible({ timeout: 20000 })
+            ]);
+            
+            if (!trainerPage.url().includes('/app')) {
+                await trainerPage.goto('http://localhost:5173/app');
+            }
+        }
+
         await expect(trainerPage).toHaveURL('/app', { timeout: 30000 });
 
         console.log('Trainer: Creating client...');
@@ -39,16 +57,37 @@ test.describe('Trainer Feedback Priority UI Flow', () => {
         console.log(`Client: Logging in (${clientEmail})...`);
         await clientPage.goto('/');
         await clientPage.getByTestId('login-input-email').fill(clientEmail);
-        await clientPage.getByTestId('login-input-password').fill('Joaquin2025');
+        await clientPage.getByTestId('login-input-password').fill('Jose2026');
         await clientPage.getByTestId('login-btn-submit').click();
+
+        // CLIENT MUST RESET PASSWORD (New user)
+        await expect(clientPage).toHaveURL(/\/update-password/);
+        await clientPage.fill('input[type="password"] >> nth=0', 'IronTrack2024!');
+        await clientPage.fill('input[type="password"] >> nth=1', 'IronTrack2024!');
+        await clientPage.click('button:has-text("Actualizar contraseña")');
+        
+        await Promise.race([
+            clientPage.waitForURL(/.*\/app/, { timeout: 20000 }),
+            expect(clientPage.locator('text=¡Todo listo!')).toBeVisible({ timeout: 20000 })
+        ]);
+        
+        if (!clientPage.url().includes('/app')) {
+            await clientPage.goto('http://localhost:5173/app');
+        }
 
         await expect(clientPage).toHaveURL('/app', { timeout: 30000 });
         console.log('Client: Logged in.');
 
         // Handle Privacy Modal
         const privacyModal = clientPage.locator('text=Consentimiento de Privacidad');
-        if (await privacyModal.isVisible({ timeout: 5000 }).catch(() => false)) {
-            await clientPage.click('button:has-text("Aceptar y Continuar")');
+        const acceptBtn = clientPage.locator('button:has-text("Aceptar y Continuar")');
+        try {
+            await acceptBtn.waitFor({ state: 'visible', timeout: 10000 });
+            await acceptBtn.click();
+            await expect(privacyModal).not.toBeVisible({ timeout: 10000 });
+            console.log('Client: Privacy Modal accepted.');
+        } catch (e) {
+            console.log('Client: Privacy Modal not found or already handled.');
         }
 
         console.log('Client: Creating workout...');
@@ -57,7 +96,6 @@ test.describe('Trainer Feedback Priority UI Flow', () => {
 
         // Add an exercise
         await clientPage.click('button:has-text("Añadir Ejercicio")');
-        // Improved selector for exercise list item
         await clientPage.waitForSelector('li button', { timeout: 10000 });
         await clientPage.locator('li button').first().click();
         await clientPage.waitForTimeout(1000);
@@ -66,7 +104,6 @@ test.describe('Trainer Feedback Priority UI Flow', () => {
         await clientPage.click('button:has-text("Añadir Set")');
         const weightInput = clientPage.locator('input[placeholder="kg"]').first();
         await weightInput.fill('65');
-        // Fix: Also fill repetitions
         const repsInput = clientPage.locator('input[placeholder="reps"]').first();
         await repsInput.fill('8');
 

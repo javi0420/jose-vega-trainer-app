@@ -51,8 +51,9 @@ test.describe('Routine Editor UX & Focus Management', () => {
 
         await page.getByTestId(`routine-card-${routineName}`).click();
         await page.getByTestId('routine-btn-add-exercise').click();
-        await page.getByTestId('routine-exercise-search').fill('Press Banca');
-        await page.locator('button[data-exercise-name="Press Banca"]').first().click();
+        await page.getByTestId('routine-exercise-search').fill('Press de Banca');
+        await page.waitForSelector('ul li button');
+        await page.locator('ul li button').first().click();
 
         // Wait for modal to hide
         await expect(page.getByTestId('routine-exercise-search')).toBeHidden();

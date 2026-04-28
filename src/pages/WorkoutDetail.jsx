@@ -46,7 +46,7 @@ export default function WorkoutDetail() {
                         *,
                         block_exercises (
                             *,
-                            exercises (id, name, muscle_group),
+                            exercises (id, name, name_es, target_muscle, gif_url),
                             sets (*)
                         )
                     )
@@ -294,6 +294,7 @@ export default function WorkoutDetail() {
                                 key={`${exerciseData.id}-${index}`}
                                 exercise={exerciseData.exercises || { name: exerciseData.custom_exercise_name, muscle_group: 'General' }}
                                 sets={exerciseData.sets || []}
+                                notes={exerciseData.notes}
                             />
                         ))
                     )}

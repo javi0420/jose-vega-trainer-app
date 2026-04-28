@@ -28,9 +28,9 @@ export const useExercises = (searchQuery = '') => {
                 // Standard efficient fetch
                 const { data, error, count } = await supabase
                     .from('exercises')
-                    .select('id, name, muscle_group, category, description, video_url', { count: 'exact' })
+                    .select('id, name, name_es, body_part, target_muscle, equipment, gif_url, instructions, instructions_es, secondary_muscles, is_active', { count: 'exact' })
                     .eq('is_active', true)
-                    .order('name', { ascending: true })
+                    .order('name_es', { ascending: true })
                     .range(pageParam, pageParam + PAGE_SIZE - 1)
 
                 if (error) throw new Error(error.message)
@@ -54,7 +54,7 @@ export const useExercises = (searchQuery = '') => {
             const { data: { user } } = await supabase.auth.getUser()
             const { data, error } = await supabase
                 .from('exercises')
-                .insert([{ ...newExercise, created_by: user?.id, is_active: true }])
+                .insert([{ ...newExercise, created_by: user?.id }])
                 .select()
                 .single()
 

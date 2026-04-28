@@ -81,10 +81,48 @@ describe('Client Dashboard', () => {
     test('renders loader while checking role', () => {
         useUserRole.mockReturnValue({ data: null, isLoading: true })
 
-        const { container } = render(<MemoryRouter><Dashboard /></MemoryRouter>)
+        render(<MemoryRouter><Dashboard /></MemoryRouter>)
 
-        // Check for loader icon (SVG) or container structure
-        // Dashboard puts loader in a flex container
-        expect(container.querySelector('.animate-spin')).toBeDefined()
+        expect(screen.getByTestId('dashboard-loading')).toBeDefined()
+        expect(screen.getByTestId('dashboard-loading').querySelector('.animate-spin')).toBeDefined()
+    })
+
+    test('renders trainer dashboard when role is trainer', () => {
+        useUserRole.mockReturnValue({ data: { role: 'trainer' }, isLoading: false })
+
+        render(<MemoryRouter><Dashboard /></MemoryRouter>)
+
+        expect(screen.getByText('Trainer Dashboard Content')).toBeDefined()
+        expect(screen.queryByText('client')).toBeNull()
+    })
+
+    test('renders client dashboard when role is client', () => {
+        useUserRole.mockReturnValue({ data: { role: 'client' }, isLoading: false })
+
+        render(<MemoryRouter><Dashboard /></MemoryRouter>)
+
+        expect(screen.getByText('Racha Actual')).toBeDefined()
+        expect(screen.queryByText('Trainer Dashboard Content')).toBeNull()
+    })
+
+    test('renders error state if profile is missing', () => {
+        useUserRole.mockReturnValue({ data: null, isLoading: false, error: new Error('Profile not found') })
+
+        render(<MemoryRouter><Dashboard /></MemoryRouter>)
+
+        expect(screen.getByText('No se pudo cargar tu perfil')).toBeDefined()
+        expect(screen.getByText('Cerrar Sesión')).toBeDefined()
+    })
+
+    test('renders client dashboard for legacy users with null role', () => {
+        // Mocking the behavior where the hook would provide defaults if DB returns null
+        useUserRole.mockReturnValue({ 
+            data: { role: 'client', requires_password_change: false }, 
+            isLoading: false 
+        })
+
+        render(<MemoryRouter><Dashboard /></MemoryRouter>)
+
+        expect(screen.getByText('Racha Actual')).toBeDefined()
     })
 })

@@ -21,6 +21,16 @@ export default function ProtectedRoute({ allowedRoles }) {
         return <Navigate to="/" replace />
     }
 
+    // Force Password Change Check
+    if (profile?.requires_password_change && window.location.pathname !== '/update-password') {
+        return <Navigate to="/update-password" replace />
+    }
+
+    // Bloqueo inverso: Si NO necesita cambiar clave y entra a la ruta de cambio
+    if (!profile?.requires_password_change && window.location.pathname === '/update-password') {
+        return <Navigate to="/app" replace />
+    }
+
     // Role Check
     if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
         // User not authorized for this route

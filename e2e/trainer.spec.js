@@ -1,7 +1,60 @@
 import { test, expect } from '@playwright/test';
 
 const TRAINER = { email: 'trainer@test.com', pass: 'password123' };
-const DEFAULT_CLIENT_PASS = 'Joaquin2025';
+const DEFAULT_CLIENT_PASS = 'Jose2026';
+
+// Centralized, robust helper to handle the mandatory password reset
+async function handleForcedReset(page, newPass) {
+    if (page.url().includes('update-password')) {
+        console.log(`[AUTH] Forced reset detected at ${page.url()}. Updating password...`);
+        await page.fill('input[type="password"] >> nth=0', newPass);
+        await page.fill('input[type="password"] >> nth=1', newPass);
+        await page.click('button:has-text("Actualizar contraseña")');
+        
+        // Wait for the success state or redirect
+        await Promise.race([
+            page.waitForURL(/\/app/, { timeout: 15000 }),
+            expect(page.locator('text=¡Todo listo!')).toBeVisible({ timeout: 15000 })
+        ]);
+        
+        if (!page.url().includes('/app')) {
+            await page.goto('/app');
+        }
+        await expect(page).toHaveURL(/\/app/, { timeout: 10000 });
+        console.log('[AUTH] Forced reset handled successfully.');
+    }
+}
+
+// Robust trainer login helper that tries both password variants
+async function loginAsTrainer(page) {
+    const passwords = [TRAINER.pass, TRAINER.pass + '!'];
+    let success = false;
+
+    for (const pass of passwords) {
+        console.log(`[AUTH] Attempting trainer login with password: ${pass}`);
+        await page.goto('/');
+        await page.fill('input[type="email"]', TRAINER.email);
+        await page.fill('input[type="password"]', pass);
+        await page.click('button:has-text("Iniciar Sesión")');
+        
+        await page.waitForTimeout(2000);
+        
+        if (page.url().includes('update-password')) {
+            await handleForcedReset(page, TRAINER.pass + '!');
+            success = true;
+            break;
+        }
+        
+        if (page.url().includes('/app')) {
+            success = true;
+            break;
+        }
+    }
+
+    if (!success) {
+        throw new Error('Failed to login as trainer with either password variant');
+    }
+}
 
 test.describe('Trainer Workflow Suite', () => {
     // Run tests sequentially to avoid session/RLS conflicts
@@ -17,9 +70,7 @@ test.describe('Trainer Workflow Suite', () => {
         await expect(page.locator('.text-red-200')).toBeVisible();
 
         // B. Login Correcto
-        await page.fill('input[type="email"]', TRAINER.email);
-        await page.fill('input[type="password"]', TRAINER.pass);
-        await page.click('button:has-text("Iniciar Sesión")');
+        await loginAsTrainer(page);
         await expect(page).toHaveURL(/\/app/);
         await expect(page.locator('text=Panel de Entrenador')).toBeVisible();
 
@@ -34,10 +85,7 @@ test.describe('Trainer Workflow Suite', () => {
 
     test('2. Client Management (Create, Edit, Filter, Delete)', async ({ page }) => {
         // Setup: Login
-        await page.goto('/');
-        await page.fill('input[type="email"]', TRAINER.email);
-        await page.fill('input[type="password"]', TRAINER.pass);
-        await page.click('button:has-text("Iniciar Sesión")');
+        await loginAsTrainer(page);
 
         const uniqueId = Date.now();
         const clientName = `Test Client ${uniqueId}`;
@@ -112,10 +160,7 @@ test.describe('Trainer Workflow Suite', () => {
         });
 
         // Login
-        await page.goto('/');
-        await page.fill('input[type="email"]', TRAINER.email);
-        await page.fill('input[type="password"]', TRAINER.pass);
-        await page.click('button:has-text("Iniciar Sesión")');
+        await loginAsTrainer(page);
 
         // Nav to Exercises
         await page.click('text=Catálogo de Ejercicios');
@@ -167,10 +212,7 @@ test.describe('Trainer Workflow Suite', () => {
 
     test('4. Full Lifecycle: Create Client -> Logout -> Login as Client', async ({ page }) => {
         // 1. Login Trainer
-        await page.goto('/');
-        await page.fill('input[type="email"]', TRAINER.email);
-        await page.fill('input[type="password"]', TRAINER.pass);
-        await page.click('button:has-text("Iniciar Sesión")');
+        await loginAsTrainer(page);
 
         // 2. Create Client
         const uniqueId = Date.now();
@@ -200,11 +242,10 @@ test.describe('Trainer Workflow Suite', () => {
         // 4. Login as New Client
         await page.fill('input[type="email"]', clientEmail);
         await page.fill('input[type="password"]', DEFAULT_CLIENT_PASS);
-
-        await Promise.all([
-            page.waitForResponse(resp => resp.url().includes('/auth/v1/token') && resp.ok(), { timeout: 15000 }),
-            page.click('button:has-text("Iniciar Sesión")')
-        ]);
+        await page.click('button:has-text("Iniciar Sesión")');
+        
+        await page.waitForTimeout(2000);
+        await handleForcedReset(page, 'Jose2026!');
 
         // 5. Verify Access (Client Dashboard)
         await expect(page).toHaveURL(/\/app/, { timeout: 20000 });

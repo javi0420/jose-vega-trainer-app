@@ -9,6 +9,7 @@ import { clsx } from 'clsx'
 export default function AssignedRoutines() {
     const navigate = useNavigate()
     const { data: assignments, isLoading, error, refetch } = useAssignedRoutines()
+    console.log('Assignments loaded in UI:', assignments);
     const { markAsViewed } = useMarkRoutineViewed()
     const { updateFeedback } = useUpdateAssignedRoutineFeedback()
 
@@ -23,12 +24,18 @@ export default function AssignedRoutines() {
                 .filter(a => !a.viewed_at)
                 .forEach(a => markAsViewed(a.id).catch(console.error))
 
-            // Initialize feedback states
-            const initialFeedback = {}
-            assignments.forEach(a => {
-                initialFeedback[a.id] = a.client_feedback || ''
+            // Initialize feedback states ONLY for new IDs to avoid overwriting local edits
+            setFeedbackStates(prev => {
+                const next = { ...prev }
+                let changed = false
+                assignments.forEach(a => {
+                    if (!(a.id in next)) {
+                        next[a.id] = a.client_feedback || ''
+                        changed = true
+                    }
+                })
+                return changed ? next : prev
             })
-            setFeedbackStates(initialFeedback)
         }
     }, [assignments])
 

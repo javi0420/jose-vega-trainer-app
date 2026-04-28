@@ -28,8 +28,8 @@ test.describe('Offline Support & Sync', () => {
         // Wait for modal
         await page.waitForTimeout(1000);
         // Use a known exercise
-        await page.fill('input[placeholder="Buscar ejercicio..."]', 'Press Banca');
-        await page.click('button:has-text("Press Banca")');
+        await page.fill('input[placeholder="Buscar ejercicio..."]', 'Press de Banca');
+        await page.click('button:has-text("Press de Banca")');
 
         // 3. Add a set
         await page.click('button:has-text("Set")');

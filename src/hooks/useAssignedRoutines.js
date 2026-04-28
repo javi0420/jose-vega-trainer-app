@@ -12,6 +12,7 @@ export function useAssignedRoutines() {
   return useQuery({
     queryKey: ['assignedRoutines', user?.id],
     queryFn: async () => {
+      console.log('Fetching assigned routines for:', user?.id);
       const { data, error } = await supabase
         .from('assigned_routines')
         .select(`
@@ -40,8 +41,7 @@ export function useAssignedRoutines() {
                 default_reps,
                 exercises (
                   id,
-                  name,
-                  muscle_group
+                  name
                 )
               )
             )
@@ -49,7 +49,8 @@ export function useAssignedRoutines() {
           trainer:profiles!assigned_by (
             id,
             full_name,
-            email
+            email,
+            avatar_url
           )
         `)
         .eq('client_id', user.id)

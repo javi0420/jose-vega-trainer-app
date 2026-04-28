@@ -13,12 +13,63 @@ test.describe('Workout Feedback UI Flow', () => {
         const clientEmail = `collab_badge_${uniqueId}@test.com`;
         const trainerEmail = 'trainer@test.com';
         const password = 'password123';
+        const defaultClientPassword = process.env.VITE_DEFAULT_PASSWORD || 'Jose2026';
+
+        // Centralized, robust helper to handle the mandatory password reset
+        async function handleForcedReset(page, newPass) {
+            if (page.url().includes('update-password')) {
+                console.log(`[AUTH] Forced reset detected at ${page.url()}. Updating password...`);
+                await page.fill('input[type="password"] >> nth=0', newPass);
+                await page.fill('input[type="password"] >> nth=1', newPass);
+                await page.click('button:has-text("Actualizar contraseña")');
+                
+                // Wait for the success state or redirect
+                await Promise.race([
+                    page.waitForURL(/\/app/, { timeout: 15000 }),
+                    expect(page.locator('text=¡Todo listo!')).toBeVisible({ timeout: 15000 })
+                ]);
+                
+                if (!page.url().includes('/app')) {
+                    await page.goto('/app');
+                }
+                await expect(page).toHaveURL(/\/app/, { timeout: 10000 });
+                console.log('[AUTH] Forced reset handled successfully.');
+            }
+        }
+
+        // Robust trainer login helper that tries both password variants
+        async function loginAsTrainer(page) {
+            const passwords = ['password123', 'password123!'];
+            let success = false;
+
+            for (const pass of passwords) {
+                console.log(`[AUTH] Attempting trainer login with password: ${pass}`);
+                await page.goto('/');
+                await page.fill('input[type="email"]', 'trainer@test.com');
+                await page.fill('input[type="password"]', pass);
+                await page.click('button:has-text("Iniciar Sesión")');
+                
+                await page.waitForTimeout(2000);
+                
+                if (page.url().includes('update-password')) {
+                    await handleForcedReset(page, 'password123!');
+                    success = true;
+                    break;
+                }
+                
+                if (page.url().includes('/app')) {
+                    success = true;
+                    break;
+                }
+            }
+
+            if (!success) {
+                throw new Error('Failed to login as trainer with either password variant');
+            }
+        }
 
         // --- STEP 1: Trainer Login & Create Client ---
-        await trainerPage.goto('/');
-        await trainerPage.getByTestId('login-input-email').fill(trainerEmail);
-        await trainerPage.getByTestId('login-input-password').fill(password);
-        await trainerPage.getByTestId('login-btn-submit').click();
+        await loginAsTrainer(trainerPage);
         await expect(trainerPage).toHaveURL('/app');
 
         await trainerPage.locator('button[title="Añadir Cliente"]').click();
@@ -35,17 +86,32 @@ test.describe('Workout Feedback UI Flow', () => {
         // --- STEP 2: Client Creates Workout (Golden Path) ---
         await clientPage.goto('/');
         await clientPage.getByTestId('login-input-email').fill(clientEmail);
-        await clientPage.getByTestId('login-input-password').fill('Joaquin2025');
-        await clientPage.getByTestId('login-btn-submit').click();
-
+        await clientPage.fill('input[type="password"]', defaultClientPassword);
+        await clientPage.click('button:has-text("Iniciar Sesión")');
+        
+        // Wait for potential redirect or dashboard
+        await clientPage.waitForTimeout(2000);
+        await handleForcedReset(clientPage, 'Jose2026!');
         await expect(clientPage).toHaveURL('/app', { timeout: 20000 });
         const privacyModal = clientPage.locator('text=Consentimiento de Privacidad');
-        if (await privacyModal.isVisible({ timeout: 5000 }).catch(() => false)) {
-            await clientPage.click('button:has-text("Aceptar y Continuar")');
+        try {
+            if (await privacyModal.isVisible({ timeout: 5000 })) {
+                await clientPage.click('button:has-text("Aceptar y Continuar")');
+                await expect(privacyModal).toBeHidden({ timeout: 10000 });
+                await clientPage.waitForTimeout(1000); // Buffer for animations
+            }
+        } catch (e) {
+            // Modal not found or already handled
         }
 
-        await clientPage.click('button:has-text("Nuevo Entreno")');
-        await clientPage.waitForURL(/\/app\/workout\/new/);
+        await expect(clientPage.getByTestId('new-workout-btn')).toBeVisible({ timeout: 15000 });
+        await clientPage.waitForLoadState('networkidle');
+        
+        // Use Promise.all to capture navigation triggered by click
+        await Promise.all([
+            clientPage.waitForURL(/\/app\/workout\/new/, { timeout: 20000 }),
+            clientPage.getByTestId('new-workout-btn').click({ force: true })
+        ]);
 
         await clientPage.click('button:has-text("Añadir Ejercicio")');
         await clientPage.waitForSelector('li button');

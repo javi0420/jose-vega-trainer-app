@@ -8,8 +8,63 @@ import { test, expect } from '@playwright/test';
  * 3. RLS prevents unauthorized deletion (implicit in the UI test).
  */
 
-const TRAINER = { email: 'trainer@test.com', pass: 'password123' };
-const DEFAULT_CLIENT_PASS = 'Joaquin2025';
+const TRAINER = {
+    email: 'trainer@test.com',
+    password: 'password123'
+};
+
+// Centralized, robust helper to handle the mandatory password reset
+async function handleForcedReset(page, newPass) {
+    if (page.url().includes('update-password')) {
+        console.log(`[AUTH] Forced reset detected at ${page.url()}. Updating password...`);
+        await page.fill('input[type="password"] >> nth=0', newPass);
+        await page.fill('input[type="password"] >> nth=1', newPass);
+        await page.click('button:has-text("Actualizar contraseña")');
+        
+        // Wait for the success state or redirect
+        await Promise.race([
+            page.waitForURL(/\/app/, { timeout: 15000 }),
+            expect(page.locator('text=¡Todo listo!')).toBeVisible({ timeout: 15000 })
+        ]);
+        
+        if (!page.url().includes('/app')) {
+            await page.goto('/app');
+        }
+        await expect(page).toHaveURL(/\/app/, { timeout: 10000 });
+        console.log('[AUTH] Forced reset handled successfully.');
+    }
+}
+
+// Robust trainer login helper that tries both password variants
+async function loginAsTrainer(page) {
+    const passwords = [TRAINER.password, TRAINER.password + '!'];
+    let success = false;
+
+    for (const pass of passwords) {
+        console.log(`[AUTH] Attempting trainer login with password: ${pass}`);
+        await page.goto('/');
+        await page.fill('input[type="email"]', TRAINER.email);
+        await page.fill('input[type="password"]', pass);
+        await page.click('button:has-text("Iniciar Sesión")');
+        
+        await page.waitForTimeout(2000);
+        
+        if (page.url().includes('update-password')) {
+            await handleForcedReset(page, TRAINER.password + '!');
+            success = true;
+            break;
+        }
+        
+        if (page.url().includes('/app')) {
+            success = true;
+            break;
+        }
+    }
+
+    if (!success) {
+        throw new Error('Failed to login as trainer with either password variant');
+    }
+}
 
 test.describe('Workout Deletion & Restrictions', () => {
 
@@ -19,10 +74,7 @@ test.describe('Workout Deletion & Restrictions', () => {
         const clientName = `Delete Test User ${uniqueId}`;
 
         // --- STEP 1: TRAINER CREATES CLIENT ---
-        await page.goto('/');
-        await page.fill('input[type="email"]', TRAINER.email);
-        await page.fill('input[type="password"]', TRAINER.pass);
-        await page.click('button:has-text("Iniciar Sesión")');
+        await loginAsTrainer(page);
         await expect(page).toHaveURL(/\/app/);
 
         // Create client
@@ -39,21 +91,38 @@ test.describe('Workout Deletion & Restrictions', () => {
 
         // --- STEP 2: CLIENT ACCEPTS TERMS & CREATES WORKOUT ---
         await page.fill('input[type="email"]', clientEmail);
-        await page.fill('input[type="password"]', DEFAULT_CLIENT_PASS);
+        await page.fill('input[type="password"]', 'Jose2026');
         await page.click('button:has-text("Iniciar Sesión")');
+        
+        await page.waitForTimeout(2000);
+        await handleForcedReset(page, 'Jose2026!');
         await expect(page).toHaveURL(/\/app/);
 
         // Handle Privacy Modal if it appears
-        const consentBtn = page.getByRole('button', { name: /Aceptar y Continuar/i });
-        if (await consentBtn.isVisible()) {
-            await consentBtn.click();
+        const privacyModal = page.locator('text=Consentimiento de Privacidad');
+        const acceptBtn = page.locator('button:has-text("Aceptar y Continuar")');
+        try {
+            await acceptBtn.waitFor({ state: 'visible', timeout: 10000 });
+            await acceptBtn.click();
+            await expect(privacyModal).not.toBeVisible({ timeout: 10000 });
+            console.log('Client: Privacy Modal accepted.');
+        } catch (e) {
+            console.log('Client: Privacy Modal not found or already handled.');
         }
 
         // Create basic workout - Handle dynamic default name
-        await page.click('text=Nuevo Entreno');
+        await expect(page.getByTestId('new-workout-btn')).toBeVisible({ timeout: 15000 });
+        await page.waitForLoadState('networkidle');
+        
+        // Use Promise.all to capture navigation triggered by click
+        await Promise.all([
+            page.waitForURL(/\/app\/workout\/new/, { timeout: 20000 }),
+            page.getByTestId('new-workout-btn').click({ force: true })
+        ]);
+
         // Wait for ANY of the "empty" workout options or the default title
         const workoutOption = page.locator('text=Entreno Vacío').or(page.locator('text=Entrenamiento de'));
-        await expect(workoutOption.first()).toBeVisible();
+        await expect(workoutOption.first()).toBeVisible({ timeout: 15000 });
         await workoutOption.first().click();
 
         // Handle title editing
@@ -99,10 +168,8 @@ test.describe('Workout Deletion & Restrictions', () => {
         await expect(page).toHaveURL('/');
 
         // --- STEP 3: TRAINER VIEWS WORKOUT (Should NOT see delete button) ---
-        await page.fill('input[type="email"]', TRAINER.email);
-        await page.fill('input[type="password"]', TRAINER.pass);
-        await page.click('button:has-text("Iniciar Sesión")');
-        await expect(page).toHaveURL(/\/app/); // Wait for login to complete
+        await loginAsTrainer(page);
+        await expect(page).toHaveURL(/\/app/);
 
         // Go to the client's workout detail
         await page.goto(`/app/workout/${workoutId}`);
@@ -123,9 +190,12 @@ test.describe('Workout Deletion & Restrictions', () => {
 
         // --- STEP 4: CLIENT DELETES WORKOUT ---
         await page.fill('input[type="email"]', clientEmail);
-        await page.fill('input[type="password"]', DEFAULT_CLIENT_PASS);
+        await page.fill('input[type="password"]', 'Jose2026!');
         await page.click('button:has-text("Iniciar Sesión")');
-        await expect(page).toHaveURL(/\/app/); // Ensure login completes
+        
+        await page.waitForTimeout(2000);
+        await handleForcedReset(page, 'Jose2026!');
+        await expect(page).toHaveURL(/\/app/);
 
         await page.goto(`/app/workout/${workoutId}`);
         await page.click('button[title="Eliminar entrenamiento"]');

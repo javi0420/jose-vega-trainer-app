@@ -28,7 +28,7 @@ test.describe('Exercise Summary Display Fix', () => {
 
         // 3. Add Exercise (Catalog Search)
         await page.click('button:has-text("Añadir Ejercicio")');
-        const exerciseName = 'Press Banca';
+        const exerciseName = 'Press de Banca';
         const searchInput = page.getByPlaceholder('Buscar ejercicio...');
         await searchInput.fill(exerciseName);
         await page.waitForTimeout(1500);
@@ -132,7 +132,7 @@ test.describe('Exercise Summary Display Fix', () => {
 
         // 3. Add Exercise 1 (Complete)
         await page.click('button:has-text("Añadir Ejercicio")');
-        const ex1Name = 'Press Banca';
+        const ex1Name = 'Press de Banca';
         await page.getByPlaceholder('Buscar ejercicio...').fill(ex1Name);
         await page.waitForTimeout(1500);
         await page.locator('ul li button').filter({ hasText: ex1Name }).first().click();

@@ -143,6 +143,20 @@ export default function ExerciseChart({ exerciseId, userId }) {
     const maxWeightRecord = Math.max(...data.map(d => d.weight));
     const showOnlyReps = maxWeightRecord === 0;
 
+    // Punto 6: Calcular dominio dinámico del eje Y con margen superior e inferior del 10%
+    const calcYDomain = (dataArr) => {
+        if (!dataArr || dataArr.length === 0) return ['auto', 'auto'];
+        const values = dataArr.map(d => d.weight).filter(v => v != null && !isNaN(v) && v > 0);
+        if (values.length === 0) return ['auto', 'auto'];
+        const minVal = Math.min(...values);
+        const maxVal = Math.max(...values);
+        const padding = (maxVal - minVal) * 0.1 || maxVal * 0.1 || 5;
+        const yMin = Math.max(0, Math.floor(minVal - padding));
+        const yMax = Math.ceil(maxVal + padding);
+        return [yMin, yMax];
+    };
+    const yDomain = calcYDomain(data);
+
     // Single record view
     if (data.length === 1) return (
         <div className="p-4 text-center bg-white/[0.03] backdrop-blur-xl rounded-[1.5rem] border border-white/5 flex flex-col items-center justify-center gap-1 shadow-xl">
@@ -186,6 +200,8 @@ export default function ExerciseChart({ exerciseId, userId }) {
                         stroke="#D4AF37"
                         orientation="left"
                         hide={showOnlyReps}
+                        domain={yDomain}
+                        allowDataOverflow={false}
                         tick={{ fontSize: 9, fontWeight: 'bold' }}
                         tickLine={false}
                         axisLine={false}
@@ -202,7 +218,7 @@ export default function ExerciseChart({ exerciseId, userId }) {
                         itemStyle={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase' }}
                         formatter={(value, name, props) => {
                             const { weight, reps } = props.payload;
-                            if (name === 'estimated1RM') return [`${weight} kg x ${reps} reps`, 'LOGRO'];
+                            if (name === 'weight') return [`${weight} kg x ${reps} reps`, 'LOGRO'];
                             return null;
                         }}
                     />
@@ -210,8 +226,8 @@ export default function ExerciseChart({ exerciseId, userId }) {
                         <Area
                             yAxisId="left"
                             type="monotone"
-                            dataKey="estimated1RM"
-                            name="estimated1RM"
+                            dataKey="weight"
+                            name="weight"
                             stroke="#D4AF37"
                             strokeWidth={3}
                             fillOpacity={1}

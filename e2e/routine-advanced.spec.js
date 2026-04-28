@@ -50,32 +50,32 @@ test.describe('Advanced Routine Features', () => {
 
         // Add Block 1
         await page.getByTestId('routine-btn-add-exercise').click();
-        await page.getByTestId('routine-exercise-search').fill('Press Banca');
-        await page.locator('button[data-exercise-name="Press Banca"]').first().click();
+        await page.getByTestId('routine-exercise-search').fill('Press de Banca');
+        await page.locator('li button').filter({ hasText: /Press de Banca/i }).first().click();
 
         // Wait for modal to close and block to appear
         await expect(page.getByTestId('routine-exercise-search')).toBeHidden();
         await expect(page.getByTestId('routine-block-item')).toHaveCount(1);
-        await expect(page.getByTestId('routine-block-item').locator('h3')).toHaveText(/press banca/i);
+        await expect(page.getByTestId('routine-block-item').locator('h3')).toHaveText(/press de banca/i);
 
         // Add Block 2
         await page.getByTestId('routine-btn-add-exercise').click();
         await page.getByTestId('routine-exercise-search').fill('Sentadilla');
-        await page.locator('button[data-exercise-name="Sentadilla"]').first().click();
+        await page.locator('li button').filter({ hasText: /Sentadilla/i }).first().click();
 
         await expect(page.getByTestId('routine-exercise-search')).toBeHidden();
         await expect(page.getByTestId('routine-block-item')).toHaveCount(2);
 
         // 2. Verify initial order
         const firstBlockName = page.getByTestId('routine-block-item').nth(0).locator('h3');
-        await expect(firstBlockName).toHaveText(/press banca/i);
+        await expect(firstBlockName).toHaveText(/press de banca/i);
 
         // 3. Move first block DOWN
         await page.getByTestId('routine-block-item').first().getByTestId('btn-move-block-down').click();
 
         // 4. Verify visual change
         await expect(page.getByTestId('routine-block-item').nth(0).locator('h3')).toHaveText(/sentadilla/i);
-        await expect(page.getByTestId('routine-block-item').nth(1).locator('h3')).toHaveText(/press banca/i);
+        await expect(page.getByTestId('routine-block-item').nth(1).locator('h3')).toHaveText(/press de banca/i);
 
         // 5. Save and reload
         await page.getByTestId('routine-btn-save').click();
@@ -86,7 +86,7 @@ test.describe('Advanced Routine Features', () => {
 
         // 6. Verify persistence
         await expect(page.getByTestId('routine-block-item').nth(0).locator('h3')).toHaveText(/sentadilla/i);
-        await expect(page.getByTestId('routine-block-item').nth(1).locator('h3')).toHaveText(/press banca/i);
+        await expect(page.getByTestId('routine-block-item').nth(1).locator('h3')).toHaveText(/press de banca/i);
     });
 
     test('can filter routines by category and search', async ({ page }) => {

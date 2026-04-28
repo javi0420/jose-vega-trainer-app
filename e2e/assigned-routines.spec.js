@@ -3,7 +3,26 @@ import { test, expect } from '@playwright/test';
 test.describe('Assigned Routines Flow', () => {
     const TRAINER_EMAIL = 'trainer@test.com';
     const TRAINER_PASS = 'password123';
-    const CLIENT_PASS = 'Joaquin2025';
+    const CLIENT_PASS = 'Jose2026!'; // Must be different from initial 'Jose2026'
+
+    // Helper to handle the mandatory password reset
+    async function handleForcedReset(page, newPass) {
+        if (page.url().includes('update-password')) {
+            await page.fill('input[type="password"] >> nth=0', newPass);
+            await page.fill('input[type="password"] >> nth=1', newPass);
+            await page.click('button:has-text("Actualizar contraseña")');
+            
+            // Wait for success message or redirection
+            await Promise.race([
+                page.waitForURL(/.*\/app/, { timeout: 15000 }),
+                expect(page.locator('text=¡Todo listo!')).toBeVisible({ timeout: 15000 })
+            ]);
+
+            if (!page.url().includes('/app')) {
+                await page.goto('http://localhost:5173/app');
+            }
+        }
+    }
 
     let clientEmail;
     let clientName;
@@ -21,6 +40,7 @@ test.describe('Assigned Routines Flow', () => {
         await page.fill('input[type="email"]', TRAINER_EMAIL);
         await page.fill('input[type="password"]', TRAINER_PASS);
         await page.click('button:has-text("Iniciar Sesión")');
+        await handleForcedReset(page, TRAINER_PASS + '!');
         await expect(page).toHaveURL(/\/app/);
         await page.waitForLoadState('networkidle');
 
@@ -147,7 +167,7 @@ test.describe('Assigned Routines Flow', () => {
         await searchInputReloaded.fill(clientEmail);
         await page.waitForTimeout(1000); // Wait for filter
 
-        const manageButtonReloaded = page.locator('button[title="Gestionar Rutinas"]').first();
+        const manageButtonReloaded = page.locator('button[data-testid="action-assign"]').first();
         await expect(manageButtonReloaded).toBeVisible();
         await manageButtonReloaded.click();
         await expect(page.locator('text=Asignar Rutina')).toBeVisible();
@@ -229,21 +249,43 @@ test.describe('Assigned Routines Flow', () => {
         // 1. Login as client
         await page.goto('/');
         await page.fill('input[type="email"]', clientEmail);
-        await page.fill('input[type="password"]', CLIENT_PASS);
+        await page.fill('input[type="password"]', 'Jose2026'); // Use the new default password
         await page.click('button:has-text("Iniciar Sesión")');
 
-        // FIX: Wait for app logic to load user profile before checking for modal
-        await page.waitForLoadState('networkidle');
-
-        // Handle Privacy Consent Modal if it appears (for new clients)
-        const privacyModal = page.locator('text=Consentimiento de Privacidad');
-        // Use a short timeout to check properly, but don't fail if not present immediately (maybe already accepted)
-        // But if it IS visible, we MUST wait for it to be accepted and disappear
-        if (await privacyModal.isVisible({ timeout: 5000 }).catch(() => false)) {
-            await page.click('button:has-text("Aceptar y Continuar")');
-            // CRITICAL: Wait for modal to disappear completely to avoid overlay interception
-            await expect(privacyModal).not.toBeVisible({ timeout: 10000 });
+        // FORCE PASSWORD RESET HANDLING
+        await expect(page).toHaveURL(/\/update-password/);
+        await page.fill('input[type="password"] >> nth=0', CLIENT_PASS);
+        await page.fill('input[type="password"] >> nth=1', CLIENT_PASS);
+        await page.click('button:has-text("Actualizar contraseña")');
+        
+        // 6. Verify success or redirection
+        await Promise.race([
+            page.waitForURL(/.*\/app/, { timeout: 20000 }),
+            expect(page.locator('text=¡Todo listo!')).toBeVisible({ timeout: 20000 })
+        ]);
+        
+        // Wait for auto-redirect or force it
+        if (!page.url().includes('/app')) {
+            await page.goto('http://localhost:5173/app');
         }
+        await expect(page).toHaveURL(/.*\/app/, { timeout: 20000 });
+
+        // Handle Privacy Consent Modal AFTER password update (it appears on /app)
+        // We use a more robust wait because it can appear after a short delay
+        const privacyModal = page.locator('text=Consentimiento de Privacidad');
+        const acceptBtn = page.locator('button:has-text("Aceptar y Continuar")');
+        
+        try {
+            await acceptBtn.waitFor({ state: 'visible', timeout: 10000 });
+            await acceptBtn.click();
+            await expect(privacyModal).not.toBeVisible({ timeout: 10000 });
+            console.log('Privacy Modal accepted');
+        } catch (e) {
+            console.log('Privacy Modal did not appear within 10s or was already handled');
+        }
+
+        // FIX: Wait for app logic to load user profile
+        await page.waitForLoadState('networkidle');
 
         await expect(page).toHaveURL(/\/app/);
 
@@ -306,11 +348,23 @@ test.describe('Assigned Routines Flow', () => {
             test.skip();
         }
 
-        // Login as client
+        // 1. Login as client
         await page.goto('/');
         await page.fill('input[type="email"]', clientEmail);
-        await page.fill('input[type="password"]', CLIENT_PASS);
+        // Note: The password was already updated in the previous test in this file
+        await page.fill('input[type="password"]', CLIENT_PASS); 
         await page.click('button:has-text("Iniciar Sesión")');
+
+        // Verify we are in /app (no reset needed now)
+        await expect(page).toHaveURL(/\/app/, { timeout: 10000 });
+
+        // Handle Privacy Consent Modal if it appears
+        const privacyModal = page.locator('text=Consentimiento de Privacidad');
+        if (await privacyModal.isVisible({ timeout: 5000 }).catch(() => false)) {
+            await page.click('button:has-text("Aceptar y Continuar")');
+            await expect(privacyModal).not.toBeVisible({ timeout: 10000 });
+        }
+
         await expect(page).toHaveURL(/\/app/);
 
         // Check for badge

@@ -7,17 +7,9 @@ export function useManageClients() {
     // Mutation for creating a new client
     const createClient = useMutation({
         mutationFn: async ({ email, fullName }) => {
-            const defaultPassword = import.meta.env.VITE_DEFAULT_PASSWORD;
-
-            if (!defaultPassword) {
-                console.error('La variable de entorno VITE_DEFAULT_PASSWORD no está configurada.');
-                throw new Error('Error de configuración: VITE_DEFAULT_PASSWORD no definida.');
-            }
-
             const { data, error } = await supabase.rpc('create_client_as_trainer', {
                 p_email: email,
-                p_full_name: fullName,
-                p_default_password: defaultPassword
+                p_full_name: fullName
             })
 
             if (error) {

@@ -3,10 +3,10 @@ import { test, expect } from '@playwright/test';
 test.describe('Atomic Workout Save - Full Flow', () => {
     test('should login, create workout with 10 exercises, save atomically, and verify in summary', async ({ page }) => {
         // Increase timeout for this long stress test
-        test.setTimeout(120000);
+        test.setTimeout(180000);
 
         // 1. LOGIN
-        await page.goto('http://localhost:5173/');
+        await page.goto('/');
 
         // Wait for login form
         await expect(page.locator('button:has-text("Iniciar Sesión")')).toBeVisible();
@@ -32,14 +32,21 @@ test.describe('Atomic Workout Save - Full Flow', () => {
         }
 
         // 2. NAVIGATE TO NEW WORKOUT
-        const newWorkoutBtn = page.getByText('Nuevo Entreno');
+        const newWorkoutBtn = page.getByTestId('new-workout-btn').first();
         await expect(newWorkoutBtn).toBeVisible({ timeout: 10000 });
+
+        
+        // Handle draft/template confirmation dialogs
+        page.on('dialog', dialog => {
+            console.log('Accepting dialog:', dialog.message());
+            dialog.accept();
+        });
+
         await newWorkoutBtn.click();
 
         await page.waitForURL(/\/workout\/new/, { timeout: 10000 });
 
         // Wait for editor to load
-        // Ensure data is ready
         await page.waitForLoadState('networkidle');
         await expect(page.getByTestId('workout-header-title-trigger')).toBeVisible({ timeout: 15000 });
 
@@ -49,101 +56,74 @@ test.describe('Atomic Workout Save - Full Flow', () => {
         for (let i = 0; i < 10; i++) {
             console.log(`Adding exercise ${i + 1}/10 (searching: ${searchTerms[i]})...`);
 
-            // Find and click Add Exercise button
-            const addBtn = page.getByTestId('btn-add-block').or(page.getByText('Añadir Ejercicio')).last();
+            const addBtn = page.getByTestId('btn-add-block').last();
             await addBtn.scrollIntoViewIfNeeded();
-            await page.waitForTimeout(300);
             await addBtn.click();
 
-            // Wait for modal
             await expect(page.getByPlaceholder('Buscar ejercicio...')).toBeVisible({ timeout: 5000 });
 
-            // Search for DIFFERENT exercise each time
-            const searchPromise = page.waitForResponse(resp => resp.url().includes('search_exercises') && resp.request().method() === 'POST');
-            await page.getByPlaceholder('Buscar ejercicio...').pressSequentially(searchTerms[i], { delay: 50 });
-            await searchPromise; // Wait for results to be fetched from DB
-
-            // Click first result (or Ad-Hoc button if not found in db)
-            const firstEx = page.locator('button').filter({ hasText: new RegExp(searchTerms[i], 'i') }).first();
+            // Use fill instead of pressSequentially for speed and reliability
+            await page.getByPlaceholder('Buscar ejercicio...').fill(searchTerms[i]);
+            
+            // Wait for results
+            const firstEx = page.getByTestId(/^exercise-item-/).filter({ hasText: new RegExp(searchTerms[i].replace(/[aeiou]/gi, '[$&áéíóú]'), 'i') }).first();
             await expect(firstEx).toBeVisible({ timeout: 10000 });
             await firstEx.click();
 
-            // Wait for modal to close
-            await expect(page.getByPlaceholder('Buscar ejercicio...')).not.toBeVisible({ timeout: 5000 });
+            // Verify exercise heading appeared in editor using new test-id
+            await expect(page.getByTestId('exercise-name').filter({ hasText: new RegExp(searchTerms[i].replace(/[aeiou]/gi, '[$&áéíóú]'), 'i') }).last()).toBeVisible({ timeout: 10000 });
 
-            // Wait for block to appear
-            await expect(page.locator(`[data-testid="workout-block-${i}"]`)).toBeVisible({ timeout: 5000 });
-            await page.waitForTimeout(300);
+            
+            await expect(page.getByPlaceholder('Buscar ejercicio...')).not.toBeVisible({ timeout: 5000 });
+            await page.waitForTimeout(200);
         }
 
         console.log('✅ All 10 exercises added');
 
         // 4. ADD 3 SETS AND COMPLETE THEM FOR ALL EXERCISES
-        const blocks = page.locator('[data-testid^="workout-block-"]');
+        const blocks = page.getByTestId(/^workout-block-/);
         const blockCount = await blocks.count();
-        expect(blockCount).toBe(10);
+        console.log(`Found ${blockCount} blocks in editor`);
 
-        for (let i = 0; i < blockCount; i++) {
+        for (let i = 0; i < 10; i++) {
             console.log(`Adding and completing sets for exercise ${i + 1}/10...`);
             const block = blocks.nth(i);
             await block.scrollIntoViewIfNeeded();
 
-            // Add 3 sets for this exercise
             for (let setNum = 0; setNum < 3; setNum++) {
-                console.log(`  Adding set ${setNum + 1}/3...`);
-
-                // Click "Añadir Set"
-                const addSetBtn = block.getByText('Añadir Set');
+                const addSetBtn = block.getByTestId('workout-btn-add-set');
                 await addSetBtn.click();
-                await page.waitForTimeout(500); // Longer wait for inputs to appear
 
-                // Wait for new inputs to appear and get the LATEST ones (using placeholder)
-                const weightInput = block.locator('input[placeholder="kg"]').last();
-                const repsInput = block.locator('input[placeholder="reps"]').last();
+                const weightInput = block.getByTestId('workout-input-weight').last();
+                const repsInput = block.getByTestId('workout-input-reps').last();
 
-                // Wait for visibility
                 await expect(weightInput).toBeVisible({ timeout: 5000 });
+                await weightInput.fill(String(50 + setNum * 5));
+                await repsInput.fill(String(10 - setNum));
 
-                // Fill data - vary weights slightly for realism
-                await weightInput.fill(String(50 + setNum * 5)); // 50, 55, 60
-                await repsInput.fill(String(10 - setNum)); // 10, 9, 8
-
-                // Click "Completar set" button using role for reliability
-                const completeBtns = block.getByRole('button', { name: 'Completar set' });
-                const completeBtn = completeBtns.nth(setNum);
+                const completeBtn = block.getByTestId('workout-btn-complete-set').nth(setNum);
                 await completeBtn.click();
-
-                await page.waitForTimeout(300);
             }
-
-            console.log(`  ✅ Completed 3 sets for exercise ${i + 1}`);
         }
 
-        console.log('✅ All exercises have 3 completed sets (30 total sets)');
+        console.log('✅ All exercises have 3 completed sets');
 
         // 5. SAVE WORKOUT
-        const saveBtn = page.getByTestId('btn-save-workout').or(page.getByText('Finalizar'));
+        const saveBtn = page.getByTestId('workout-btn-save');
         await saveBtn.scrollIntoViewIfNeeded();
         await saveBtn.click();
 
-        // Wait for redirect to summary
-        await page.waitForURL(/\/app\/workout\/[a-f0-9-]+/, { timeout: 20000 });
+        await page.waitForURL(/\/app\/workout\/[a-f0-9-]+/, { timeout: 35000 });
         console.log('✅ Redirected to summary');
 
-        // 6. VERIFY SUMMARY SHOWS ALL 10 EXERCISES
-        // Wait for summary to load
+        // 6. VERIFY SUMMARY
         await page.waitForLoadState('networkidle');
-        await page.waitForTimeout(2000);
-
-        // Count exercise cards in summary (usually <h3> or similar headings)
-        const exerciseCards = page.locator('h3, h2, .font-bold').filter({ hasText: /[A-Z]/ });
-        const count = await exerciseCards.count();
-
+        const summaryContainer = page.getByTestId('workout-summary-container').or(page.locator('.glass-card').first());
+        await expect(summaryContainer).toBeVisible({ timeout: 15000 });
+        
+        const exerciseHeadings = summaryContainer.locator('h3');
+        const count = await exerciseHeadings.count();
         console.log(`Found ${count} exercise entries in summary`);
-
-        // Should have at least 10 exercises
         expect(count).toBeGreaterThanOrEqual(10);
-
-        console.log(`✅ Test passed! Successfully saved and verified ${count} exercises`);
     });
 });

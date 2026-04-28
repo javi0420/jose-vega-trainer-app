@@ -9,6 +9,7 @@ import RoutineBlock from '../components/RoutineBlock';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { normalizeText } from '../utils/text';
+import { t } from '../utils/translations';
 
 export default function RoutineDetail() {
     const { id } = useParams();
@@ -109,21 +110,27 @@ export default function RoutineDetail() {
                         id: block.id,
                         exercises: (block.routine_exercises || [])
                             .sort((a, b) => a.position.localeCompare(b.position))
-                            .map(re => ({
-                                id: re.exercises?.id, // Exercise ID
-                                name: re.custom_exercise_name || re.exercises?.name,
-                                muscle_group: re.exercises?.muscle_group || 'General',
-                                is_active: re.exercises?.is_active ?? true,
+                            .map((re, reIdx) => {
+                                // Punto 1: Robusto frente a ejercicios archivados
+                                // Supabase devuelve exercises=null si el FK references un ejercicio borrado
+                                // Usamos fallbacks para garantizar que el ejercicio siempre se muestre
+                                const exerciseData = re.exercises || null;
+                                return {
+                                    id: exerciseData?.id ?? null, // null explícito si está archivado/huérfano
+                                    name: re.custom_exercise_name || exerciseData?.name_es || exerciseData?.name || '(Ejercicio eliminado)',
+                                    muscle_group: t(exerciseData?.target_muscle || exerciseData?.body_part || exerciseData?.muscle_group || 'General'),
+                                    is_active: exerciseData?.is_active ?? false, // Si no hay datos, asumir archivado
 
-                                // Routine config
-                                default_sets: re.default_sets || 3,
-                                default_reps: re.default_reps || '8-12',
-                                default_rpe: re.default_rpe || 8,
-                                notes: re.notes || '',
+                                    // Routine config
+                                    default_sets: re.default_sets || 3,
+                                    default_reps: re.default_reps || '8-12',
+                                    default_rpe: re.default_rpe || 8,
+                                    notes: re.notes || '',
 
-                                // Internal ID for keys? Using index mainly
-                                internalId: Math.random().toString(36)
-                            }))
+                                    // ID estable para React keys
+                                    internalId: re.id || `re-${reIdx}`
+                                };
+                            })
                     }));
 
                 setBlocks(sortedBlocks);
@@ -284,8 +291,8 @@ export default function RoutineDetail() {
                         ...b,
                         exercises: [...b.exercises, {
                             id: exercise.id,
-                            name: exercise.name,
-                            muscle_group: exercise.muscle_group,
+                            name: exercise.name_es || exercise.name,
+                            muscle_group: t(exercise.target_muscle || exercise.body_part || exercise.muscle_group || 'General'),
                             default_sets: 3,
                             default_reps: '8-12',
                             default_rpe: 8,
@@ -302,8 +309,8 @@ export default function RoutineDetail() {
                 id: generateUUID(), // Temporary ID
                 exercises: [{
                     id: exercise.id,
-                    name: exercise.name,
-                    muscle_group: exercise.muscle_group,
+                    name: exercise.name_es || exercise.name,
+                    muscle_group: t(exercise.target_muscle || exercise.body_part || exercise.muscle_group || 'General'),
                     default_sets: 3,
                     default_reps: '8-12',
                     default_rpe: 8,
@@ -563,10 +570,10 @@ export default function RoutineDetail() {
                                                     className="flex w-full items-center gap-4 rounded-lg px-4 py-3 text-left hover:bg-gray-900 active:bg-gray-800"
                                                 >
                                                     <div className="flex-1">
-                                                        <p className="font-medium text-gray-200">{ex.name}</p>
-                                                        {ex.muscle_group && (
+                                                        <p className="font-medium text-gray-200">{ex.name_es || ex.name}</p>
+                                                        {(ex.target_muscle || ex.muscle_group) && (
                                                             <span className="inline-block rounded bg-gray-800 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-gray-400">
-                                                                {ex.muscle_group}
+                                                                {t(ex.target_muscle || ex.muscle_group)}
                                                             </span>
                                                         )}
                                                     </div>

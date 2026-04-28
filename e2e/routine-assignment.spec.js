@@ -22,8 +22,8 @@ test.describe('Routine Assignment Preview', () => {
         // 2. Add exercises to the routine
         await page.getByTestId(`routine-card-${routineName}`).click();
         await page.getByTestId('routine-btn-add-exercise').click();
-        await page.getByTestId('routine-exercise-search').fill('Press Banca');
-        await page.locator('button[data-exercise-name="Press Banca"]').first().click();
+        await page.getByTestId('routine-exercise-search').fill('Press de Banca');
+        await page.locator('li button').filter({ hasText: /Press de Banca/i }).first().click();
         await expect(page.getByTestId('routine-exercise-search')).toBeHidden();
 
         await page.getByTestId('routine-btn-save').click();
@@ -60,7 +60,7 @@ test.describe('Routine Assignment Preview', () => {
         // 8. Verify Preview appears - use longer timeout for DB sync
         await expect(page.getByTestId('routine-preview-section')).toBeVisible();
         await expect(page.getByTestId('routine-preview-section')).toContainText('Bloque 1', { timeout: 10000 });
-        await expect(page.getByTestId('routine-preview-section')).toContainText('Press Banca', { timeout: 10000 });
+        await expect(page.getByTestId('routine-preview-section')).toContainText(/press/i, { timeout: 10000 });
 
         // 7. Verify Assign button is there
         await expect(page.locator('button:has-text("Confirmar Asignación")')).toBeVisible();

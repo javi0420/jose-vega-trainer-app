@@ -1,15 +1,64 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 import { Lock, Loader2, CheckCircle2 } from 'lucide-react'
 
+import { useQueryClient } from '@tanstack/react-query'
+import { useAuth } from '../context/AuthContext'
+import { useUserRole } from '../hooks/useUserRole'
+
 export default function UpdatePassword() {
+    const { user, loading: authLoading } = useAuth()
+    const { data: profile, isLoading: profileLoading } = useUserRole()
+    const queryClient = useQueryClient()
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const [success, setSuccess] = useState(false)
     const navigate = useNavigate()
+
+    // Handle redirection after success
+    useEffect(() => {
+        if (success) {
+            const timer = setTimeout(() => {
+                navigate('/app', { replace: true })
+            }, 2000)
+            return () => clearTimeout(timer)
+        }
+    }, [success, navigate])
+
+    // Redirect away if user doesn't need to be here
+    useEffect(() => {
+        // If we just succeeded, DON'T run the "redirect away" logic.
+        // The success effect will handle navigation in 2 seconds.
+        if (success) return;
+
+        if (!authLoading && !profileLoading) {
+            // If not logged in at all, go to login
+            if (!user) {
+                navigate('/', { replace: true });
+                return;
+            }
+
+            // If logged in but doesn't have the "requires reset" flag, go to app
+            if (profile && profile.requires_password_change === false) {
+                navigate('/app', { replace: true });
+            }
+        }
+    }, [user, authLoading, profile, profileLoading, success, navigate]);
+
+    // Show loading state while checking (unless we already succeeded)
+    if ((authLoading || profileLoading) && !success) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-gray-950">
+                <Loader2 className="h-10 w-10 animate-spin text-gold-500" />
+            </div>
+        )
+    }
+
+    // Don't render the form if we are about to redirect away (not logged in)
+    if (!user) return null;
 
     const handleUpdatePassword = async (e) => {
         e.preventDefault()
@@ -34,14 +83,30 @@ export default function UpdatePassword() {
 
             setSuccess(true)
             toast.success('Contraseña actualizada con éxito')
+            
+            // 2. Clear the force password change flag in profiles
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .update({ requires_password_change: false })
+                .eq('id', user?.id || (await supabase.auth.getUser()).data.user?.id)
 
-            // Redirigir después de un breve delay
-            setTimeout(() => {
-                navigate('/app')
-            }, 3000)
+            if (profileError) throw profileError
+            
+            // 3. Invalidate cache to ensure ProtectedRoute sees the change
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['userRole', user?.id] }),
+                queryClient.invalidateQueries({ queryKey: ['profile', user?.id] })
+            ]);
+
         } catch (error) {
             console.error('Error actualizando contraseña:', error)
-            toast.error(error.message || 'Error al actualizar la contraseña')
+            let errorMessage = error.message || 'Error al actualizar la contraseña';
+            
+            if (errorMessage.includes('different from the old password')) {
+                errorMessage = 'La nueva contraseña debe ser diferente a la anterior';
+            }
+            
+            toast.error(errorMessage)
         } finally {
             setLoading(false)
         }
@@ -50,7 +115,7 @@ export default function UpdatePassword() {
     if (success) {
         return (
             <div className="flex min-h-screen items-center justify-center bg-gray-950 px-4">
-                <div className="w-full max-激-md rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center shadow-2xl">
+                <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center shadow-2xl">
                     <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
                         <CheckCircle2 className="h-10 w-10" />
                     </div>

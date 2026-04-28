@@ -6,6 +6,7 @@ import { useRoutines } from '../hooks/useRoutines'
 import { useClientRoutinesV2 } from '../hooks/useClientRoutines'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import ExerciseDetailsModal from './ExerciseDetailsModal'
 
 export default function AssignRoutineModal({ client, onClose }) {
     const navigate = useNavigate()
@@ -18,12 +19,16 @@ export default function AssignRoutineModal({ client, onClose }) {
         createEmptyRoutine
     } = useClientRoutinesV2(client?.id)
 
+    const [viewingExercise, setViewingExercise] = useState(null)
+
 
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedTemplateId, setSelectedTemplateId] = useState(null)
 
     const [assignmentNotes, setAssignmentNotes] = useState('')
     const [isAssigning, setIsAssigning] = useState(false)
+    const [isCreatingNew, setIsCreatingNew] = useState(false)
+    const [newRoutineName, setNewRoutineName] = useState('Nueva Rutina')
 
     // Fetch already assigned routines (v3.5)
     const { data: assignedRoutineIds } = useQuery({
@@ -55,7 +60,7 @@ export default function AssignRoutineModal({ client, onClose }) {
                         custom_exercise_name,
                         default_sets,
                         default_reps,
-                        exercises (id, name)
+                        exercises (id, name, gif_url, target_muscle)
                     )
                 `)
                 .eq('routine_id', selectedTemplateId)
@@ -116,13 +121,15 @@ export default function AssignRoutineModal({ client, onClose }) {
     }
 
     const handleCreateNew = async () => {
-        const name = window.prompt('Nombre de la nueva rutina:', 'Nueva Rutina')
-        if (name === null) return // Cancelled
-
+        if (!newRoutineName.trim()) {
+            alert('Por favor, introduce un nombre para la rutina')
+            return
+        }
+ 
         try {
-            const newRoutine = await createEmptyRoutine.mutateAsync({ name })
+            const newRoutine = await createEmptyRoutine.mutateAsync({ name: newRoutineName })
             console.log('Created routine:', newRoutine.id)
-
+ 
             // Auto-assign the new routine to the client so it appears in their list
             const { data: userData } = await supabase.auth.getUser()
             if (userData.user && client?.id) {
@@ -135,19 +142,20 @@ export default function AssignRoutineModal({ client, onClose }) {
                         assigned_by: userData.user.id
                     })
                     .select()
-
+ 
                 if (assignError) {
                     console.error('Error auto-assigning created routine:', assignError)
                     alert(`⚠️ Rutina creada pero no se pudo asignar automáticamente: ${assignError.message}`)
                 } else {
                     console.log('Successfully auto-assigned routine:', assignData)
                 }
-            } else {
-                console.warn('Skipping auto-assignment: user or client missing')
             }
-
+ 
             if (window.confirm('Rutina creada con éxito. ¿Ir a la edición?')) {
                 navigate(`/app/routines/${newRoutine.id}`)
+            } else {
+                setIsCreatingNew(false)
+                setNewRoutineName('Nueva Rutina')
             }
         } catch (err) {
             console.error('Error creating routine:', err)
@@ -156,8 +164,8 @@ export default function AssignRoutineModal({ client, onClose }) {
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/90 backdrop-blur-md p-4 animate-in fade-in duration-300" data-testid="assign-routine-modal">
-            <div className="w-full max-w-lg rounded-[2.5rem] border border-gray-800 bg-gray-900 shadow-2xl overflow-hidden flex flex-col max-h-[85vh] relative shadow-gold-500/5">
+        <div className="fixed inset-0 z-[100] w-full h-full flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300" data-testid="assign-routine-modal">
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg rounded-[2.5rem] border border-gray-800 bg-gray-900 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] shadow-gold-500/10">
 
                 {/* Decorative background glow */}
                 <div className="absolute -top-24 -right-24 h-48 w-48 rounded-full bg-gold-500/10 blur-3xl" />
@@ -185,18 +193,43 @@ export default function AssignRoutineModal({ client, onClose }) {
                 <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
                     {/* Section: Action Bar - Create New */}
                     <section>
-                        <button
-                            onClick={handleCreateNew}
-                            disabled={createEmptyRoutine.isPending}
-                            className="w-full flex items-center justify-center gap-3 p-5 rounded-[1.5rem] bg-gold-500 text-black font-black uppercase tracking-widest text-xs hover:bg-gold-400 active:scale-[0.98] transition-all shadow-lg shadow-gold-500/20 disabled:opacity-50"
-                        >
-                            {createEmptyRoutine.isPending ? (
-                                <Loader2 className="h-4 w-4 animate-spin text-black" />
-                            ) : (
+                        {!isCreatingNew ? (
+                            <button
+                                onClick={() => setIsCreatingNew(true)}
+                                className="w-full flex items-center justify-center gap-3 p-5 rounded-[1.5rem] bg-gold-500 text-black font-black uppercase tracking-widest text-xs hover:bg-gold-400 active:scale-[0.98] transition-all shadow-lg shadow-gold-500/20"
+                            >
                                 <Plus className="h-5 w-5" />
-                            )}
-                            Crear desde cero
-                        </button>
+                                Crear desde cero
+                            </button>
+                        ) : (
+                            <div className="p-4 rounded-[1.5rem] bg-gray-800/50 border border-gold-500/30 space-y-4 animate-in slide-in-from-top-2">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-gold-500 uppercase tracking-widest">Nombre de la nueva rutina</label>
+                                    <input
+                                        type="text"
+                                        autoFocus
+                                        value={newRoutineName}
+                                        onChange={(e) => setNewRoutineName(e.target.value)}
+                                        className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:border-gold-500 outline-none"
+                                    />
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setIsCreatingNew(false)}
+                                        className="flex-1 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-white"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={handleCreateNew}
+                                        disabled={createEmptyRoutine.isPending}
+                                        className="flex-[2] py-2 bg-gold-500 text-black text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-gold-400 disabled:opacity-50"
+                                    >
+                                        {createEmptyRoutine.isPending ? 'Creando...' : 'Confirmar Creación'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </section>
 
                     {/* Section: Client Current Routines */}
@@ -266,6 +299,7 @@ export default function AssignRoutineModal({ client, onClose }) {
                                             {/* Action: Manage Routine */}
                                             <button
                                                 onClick={() => navigate(`/app/routines/${r.id}`)}
+                                                data-testid="btn-manage-routine"
                                                 className="flex items-center gap-2 rounded-xl bg-gray-800 px-3 py-2 text-[10px] font-black text-gold-500 uppercase tracking-widest border border-gray-700 hover:border-gold-500/50 hover:bg-gold-500/10 transition-all active:scale-95"
                                             >
                                                 <Settings className="h-3 w-3" />
@@ -382,17 +416,41 @@ export default function AssignRoutineModal({ client, onClose }) {
                                                                         <div className="h-px flex-1 bg-gray-800" />
                                                                     </div>
                                                                     <div className="pl-2 space-y-1">
-                                                                        {block.routine_exercises?.map((ex) => (
-                                                                            <div key={ex.id} className="flex items-center justify-between gap-2">
-                                                                                <div className="flex items-center gap-1.5 min-w-0">
-                                                                                    <Dumbbell className="h-2.5 w-2.5 text-gold-500 shrink-0" />
-                                                                                    <span className="text-[10px] text-gray-300 font-bold truncate uppercase">
-                                                                                        {ex.exercise?.name || ex.exercises?.name || ex.custom_exercise_name || 'Ejercicio'}
-                                                                                    </span>
+                                                                        {block.routine_exercises?.map((ex) => {
+                                                                            const exerciseData = ex.exercise || ex.exercises || {};
+                                                                            return (
+                                                                                <div key={ex.id} className="flex items-center justify-between gap-2 py-1">
+                                                                                    <div className="flex items-center gap-2 min-w-0">
+                                                                                        {exerciseData.gif_url ? (
+                                                                                            <div className="w-8 h-8 rounded shrink-0 overflow-hidden bg-gold-500">
+                                                                                                <img
+                                                                                                    src={exerciseData.gif_url}
+                                                                                                    alt={exerciseData.name}
+                                                                                                    className="w-full h-full object-cover"
+                                                                                                    style={{ mixBlendMode: 'multiply', filter: 'grayscale(100%) contrast(1.1)' }}
+                                                                                                    loading="lazy"
+                                                                                                />
+                                                                                            </div>
+                                                                                        ) : (
+                                                                                            <div className="w-8 h-8 rounded bg-gray-800 flex items-center justify-center shrink-0">
+                                                                                                <Dumbbell className="h-4 w-4 text-gold-500" />
+                                                                                            </div>
+                                                                                        )}
+                                                                                        <div className="flex flex-col min-w-0">
+                                                                                            <span className="text-[10px] text-gray-300 font-bold truncate uppercase leading-none">
+                                                                                                {exerciseData.name || ex.custom_exercise_name || 'Ejercicio'}
+                                                                                            </span>
+                                                                                            {exerciseData.target_muscle && (
+                                                                                                <span className="text-[8px] text-gray-500 capitalize mt-0.5 truncate">
+                                                                                                    {exerciseData.target_muscle}
+                                                                                                </span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <span className="text-[9px] text-gray-500 font-mono whitespace-nowrap bg-gray-800 px-1.5 py-0.5 rounded">{ex.default_sets}x{ex.default_reps}</span>
                                                                                 </div>
-                                                                                <span className="text-[9px] text-gray-500 font-mono whitespace-nowrap">{ex.default_sets}x{ex.default_reps}</span>
-                                                                            </div>
-                                                                        ))}
+                                                                            );
+                                                                        })}
                                                                     </div>
                                                                 </div>
                                                             ))}
@@ -452,11 +510,17 @@ export default function AssignRoutineModal({ client, onClose }) {
                             )}
                         </div>
                     </section>
-                </div >
+                </div>
 
-                {/* Footer Deco */}
-                < div className="h-1 w-full bg-gradient-to-r from-transparent via-gold-500/20 to-transparent" />
-            </div >
-        </div >
+                {/* View Details Modal for Routine Preview */}
+                <ExerciseDetailsModal
+                    exercise={viewingExercise}
+                    onClose={() => setViewingExercise(null)}
+                />
+            </div>
+
+            {/* Footer Deco */}
+            <div className="h-1 w-full bg-gradient-to-r from-transparent via-gold-500/20 to-transparent" />
+        </div>
     )
 }

@@ -8,7 +8,7 @@ const MOCK_USER = {
 };
 
 const MOCK_EXERCISES = [
-    { id: 'ex-1', name: 'Press Banca', muscle_group: 'pecho' },
+    { id: 'ex-1', name: 'Press de Banca', muscle_group: 'pecho' },
     { id: 'ex-2', name: 'Sentadilla', muscle_group: 'pierna' }
 ];
 
@@ -35,6 +35,20 @@ test.describe('Authenticated User Flows', () => {
                 contentType: 'application/json',
                 headers: { 'content-range': '0-1/2' },
                 body: JSON.stringify(MOCK_EXERCISES)
+            });
+        });
+
+        // Profiles Fetch (Used by useUserRole and ProtectedRoute)
+        await page.route('**/rest/v1/profiles*', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([{
+                    id: MOCK_USER.id,
+                    role: 'client',
+                    full_name: 'Test User',
+                    requires_password_change: false
+                }])
             });
         });
 
@@ -134,16 +148,17 @@ test.describe('Authenticated User Flows', () => {
         await expect(nameInput).toBeHidden();
 
         // Open Add Exercise Modal
-        await page.click('button:has-text("Añadir Ejercicio")');
+        await page.getByTestId('btn-add-block').first().click();
 
         // Verify Mocked Exercises appear
-        await expect(page.getByText('Press Banca')).toBeVisible();
+        await expect(page.getByTestId(/^exercise-item-/).filter({ hasText: 'Press de Banca' })).toBeVisible();
 
         // Select Exercise
-        await page.getByText('Press Banca').click();
+        await page.getByTestId(/^exercise-item-/).filter({ hasText: 'Press de Banca' }).first().click();
 
-        // Verify Exercise Added to List
-        await expect(page.getByRole('heading', { level: 3, name: /Press Banca/i })).toBeVisible();
+        // Verify Exercise Added to List (case-insensitive)
+        await expect(page.getByTestId('exercise-name').filter({ hasText: /Press de Banca/i }).first()).toBeVisible({ timeout: 15000 });
+
 
         // --- 4. FINISH WORKOUT ---
         // Click Finalizar

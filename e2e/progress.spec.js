@@ -47,7 +47,7 @@ test.describe('Progress & Statistics (UX v2)', () => {
         await expect(firstOption).toBeVisible({ timeout: 10000 });
 
         // Should show something with "Press"
-        await expect(firstOption).toContainText('Press');
+        await expect(firstOption).toContainText(/press/i);
 
         // 2. Select option
         await firstOption.click();

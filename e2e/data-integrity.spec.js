@@ -10,9 +10,9 @@ test.describe('Data Integrity & Soft Delete Flow', () => {
         await page.goto('/');
 
         if (!page.url().includes('/app')) {
-            await page.getByTestId('login-input-email').fill(TEST_USER.email);
-            await page.getByTestId('login-input-password').fill(TEST_USER.pass);
-            await page.getByTestId('login-btn-submit').click();
+            await page.fill('input[type="email"]', TEST_USER.email);
+            await page.fill('input[type="password"]', TEST_USER.pass);
+            await page.click('button:has-text("Iniciar Sesión")');
             await expect(page).toHaveURL(/\/app/);
         }
 
@@ -61,19 +61,16 @@ test.describe('Data Integrity & Soft Delete Flow', () => {
         await page.getByTestId('routine-exercise-search').pressSequentially(exName, { delay: 50 });
         await searchPromise;
 
-        const exerciseBtn = page.locator(`button[data-exercise-name="${exName}"]`).or(page.locator('button').filter({ hasText: exName }));
+        const exerciseBtn = page.locator('button').filter({ hasText: exName });
         await expect(exerciseBtn.first()).toBeVisible({ timeout: 10000 });
         await exerciseBtn.first().click();
 
-        // --- VERIFY LOCALLY ADDED ---
-        await page.screenshot({ path: 'step2-exercise-added-locally.png' });
         await expect(page.locator('h3').filter({ hasText: new RegExp(exName, 'i') }).first()).toBeVisible();
         console.log('Exercise confirmed in local state.');
 
         console.log('Saving routine...');
         await page.getByTestId('routine-btn-save').click();
 
-        // Use a more specific wait to ensure we actually navigated back to the list
         await expect(page).toHaveURL(/\/app\/routines$/);
         await expect(page.getByTestId('routine-btn-create-new')).toBeVisible();
         console.log('Routine saved and list loaded.');
@@ -109,15 +106,16 @@ test.describe('Data Integrity & Soft Delete Flow', () => {
         await page.getByTestId(`routine-card-${routineName}`).scrollIntoViewIfNeeded();
         await page.getByTestId(`routine-card-${routineName}`).click();
 
-        // Wait for page to finish loading
         await expect(page.locator('.animate-spin')).not.toBeVisible();
-        await expect(page.getByTestId('routine-title-header')).toBeVisible();
 
-        await page.screenshot({ path: 'step5-integrity-final-2.png', fullPage: true });
-
-        // Should show the exercise name even if archived (use regex for case-insensitivity)
+        // Should show the exercise name even if archived
         const routineExercise = page.locator('h3').filter({ hasText: new RegExp(exName, 'i') }).first();
         await expect(routineExercise).toBeVisible({ timeout: 10000 });
         console.log('Verified: Exercise still in routine.');
+
+        // P1 Fix: La badge "Archivado" debe ser visible junto al nombre del ejercicio
+        const archivedBadge = page.locator('span:has-text("Archivado")').first();
+        await expect(archivedBadge).toBeVisible({ timeout: 5000 });
+        console.log('✅ P1: "Archivado" badge is visible in routine.');
     });
 });

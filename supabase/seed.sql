@@ -191,7 +191,7 @@ WHERE id IN (
 );
 
 -- 5. Exercises (Expanded)
-INSERT INTO public.exercises (id, name, muscle_group) VALUES 
+INSERT INTO public.exercises (id, name, target_muscle) VALUES 
 ('ecececec-ecec-ecec-ecec-ecececececec', 'Sentadilla', 'Piernas'),
 ('d1d1d1d1-d1d1-d1d1-d1d1-d1d1d1d1d1d1', 'Peso Muerto', 'Espalda'),
 ('b1b1b1b1-b1b1-b1b1-b1b1-b1b1b1b1b1b1', 'Press Banca', 'Pecho')

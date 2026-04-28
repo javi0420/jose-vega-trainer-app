@@ -22,9 +22,10 @@ export default function FeedbackSection({
     const [isClientSuccess, setIsClientSuccess] = useState(false)
 
     // Sync state if props change (e.g. after refetch)
+    // Punto 3: Normalizar null a '' para evitar el warning de React en textareas controlados
     useEffect(() => {
-        if (feedbackNotes !== undefined) setTrainerFeedback(feedbackNotes)
-        if (clientNotes !== undefined) setClientFeedback(clientNotes)
+        if (feedbackNotes !== undefined) setTrainerFeedback(feedbackNotes ?? '')
+        if (clientNotes !== undefined) setClientFeedback(clientNotes ?? '')
     }, [feedbackNotes, clientNotes])
 
     // Auto-mark client notes as viewed for Trainer

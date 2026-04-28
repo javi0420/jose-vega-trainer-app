@@ -33,10 +33,10 @@ test.describe('Session Persistence', () => {
 
         // 2. Add an exercise
         await page.click('button:has-text("Añadir Ejercicio")'); // Updated selector
-        await page.fill('input[placeholder="Buscar ejercicio..."]', 'Press Banca');
+        await page.fill('input[placeholder="Buscar ejercicio..."]', 'Press de Banca');
         await page.waitForTimeout(1000);
-        await page.click('button:has-text("Press Banca")');
-        await expect(page.locator('h3:has-text("Press Banca")')).toBeVisible();
+        await page.click('button:has-text("Press de Banca")');
+        await expect(page.locator('h3:has-text("Press de Banca")')).toBeVisible();
 
         // 3. Add a set with values
         await page.click('button:has-text("Set")'); // More robust than "Añadir Set"
@@ -52,7 +52,7 @@ test.describe('Session Persistence', () => {
         // 5. Verify recovery
         // The URL should still be /app/workout/new (if RouteGuard works)
         await expect(page).toHaveURL(/\/app\/workout\/new/);
-        await expect(page.locator('h3:has-text("Press Banca")')).toBeVisible();
+        await expect(page.locator('h3:has-text("Press de Banca")')).toBeVisible();
         await expect(page.locator('input[placeholder="kg"]').first()).toHaveValue('80');
         await expect(page.locator('input[placeholder="reps"]').first()).toHaveValue('10');
     });
@@ -61,9 +61,9 @@ test.describe('Session Persistence', () => {
         // 1. Start workout and add data
         await page.click('button:has-text("Nuevo Entreno")');
         await page.click('button:has-text("Ejercicio")');
-        await page.fill('input[placeholder="Buscar ejercicio..."]', 'Press Banca');
+        await page.fill('input[placeholder="Buscar ejercicio..."]', 'Press de Banca');
         await page.waitForTimeout(1000);
-        await page.click('button:has-text("Press Banca")');
+        await page.click('button:has-text("Press de Banca")');
         await page.click('button:has-text("Set")');
         await page.locator('input[placeholder="kg"]').first().fill('100');
 
@@ -81,7 +81,7 @@ test.describe('Session Persistence', () => {
 
         // 4. Verify recovery
         await expect(page).toHaveURL(/\/app\/workout\/new/);
-        await expect(page.locator('h3:has-text("Press Banca")')).toBeVisible();
+        await expect(page.locator('h3:has-text("Press de Banca")')).toBeVisible();
         await expect(page.locator('input[placeholder="kg"]').first()).toHaveValue('100');
     });
 });

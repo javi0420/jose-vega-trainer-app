@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { X, FileText, Dumbbell, Loader2, ChevronRight, User, Briefcase } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import ExerciseDetailsModal from './ExerciseDetailsModal'
 
 export default function LoadTemplateModal({ isOpen, onClose, onLoadTemplate }) {
     const { user } = useAuth()
@@ -9,6 +10,7 @@ export default function LoadTemplateModal({ isOpen, onClose, onLoadTemplate }) {
     const [activeTab, setActiveTab] = useState('trainer') // 'trainer' | 'client'
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState(null)
+    const [viewingExercise, setViewingExercise] = useState(null)
 
     console.log(`DEBUG: LoadTemplateModal Render. isOpen=${isOpen}, user=${user?.id}, isLoading=${isLoading}`)
 
@@ -103,14 +105,20 @@ export default function LoadTemplateModal({ isOpen, onClose, onLoadTemplate }) {
             return sum + (block.routine_exercises?.length || 0)
         }, 0) || 0
 
-        const exerciseNames = routine.routine_blocks
+        const exercisesList = routine.routine_blocks
             ?.flatMap(block => block.routine_exercises || [])
-            .slice(0, 3)
-            .map(re => re.exercises?.name || re.custom_exercise_name)
-            .filter(Boolean)
+            .filter(re => re.exercises?.name || re.custom_exercise_name)
+            .slice(0, 4)
+
+        const exerciseNames = exercisesList
+            ?.map(re => re.exercises?.name || re.custom_exercise_name)
             .join(', ') || 'Sin ejercicios'
 
-        return { totalBlocks, totalExercises, exerciseNames }
+        const exerciseThumbnails = exercisesList
+            ?.map(re => re.exercises?.gif_url)
+            .filter(Boolean)
+
+        return { totalBlocks, totalExercises, exerciseNames, exerciseThumbnails }
     }
 
     const filteredRoutines = routines.filter(routine => {
@@ -205,7 +213,7 @@ export default function LoadTemplateModal({ isOpen, onClose, onLoadTemplate }) {
                     ) : (
                         <div className="space-y-3">
                             {filteredRoutines.map((routine) => {
-                                const { totalBlocks, totalExercises, exerciseNames } = getRoutineSummary(routine)
+                                const { totalBlocks, totalExercises, exerciseNames, exerciseThumbnails } = getRoutineSummary(routine)
                                 return (
                                     <button
                                         key={routine.id}
@@ -221,9 +229,36 @@ export default function LoadTemplateModal({ isOpen, onClose, onLoadTemplate }) {
                                                 {routine.description && (
                                                     <p className="text-xs text-gray-500 mb-2 line-clamp-1">{routine.description}</p>
                                                 )}
-                                                <div className="flex items-center gap-2 text-xs text-gray-600">
-                                                    <Dumbbell className="h-3 w-3" />
-                                                    <span className="truncate">{exerciseNames}</span>
+                                                {exerciseThumbnails && exerciseThumbnails.length > 0 && (
+                                                    <div className="flex -space-x-2 my-2">
+                                                        {exerciseThumbnails.map((thumb, idx) => (
+                                                            <div
+                                                                key={idx}
+                                                                onClick={(e) => { e.stopPropagation(); setViewingExercise({ gif_url: thumb, name: 'Vista Previa del Ejercicio' }); }}
+                                                                className="cursor-pointer hover:scale-110 transition-transform z-10"
+                                                                title="Ver animación a pantalla completa"
+                                                            >
+                                                                <div className="w-6 h-6 rounded-full border border-gray-800 shrink-0 shadow-lg shadow-gold-500/10 overflow-hidden bg-gold-500">
+                                                                    <img
+                                                                        src={thumb}
+                                                                        alt="thumbnail"
+                                                                        className="w-full h-full object-cover"
+                                                                        style={{ mixBlendMode: 'multiply', filter: 'grayscale(100%) contrast(1.1)' }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        {totalExercises > exerciseThumbnails.length && (
+                                                            <div className="w-6 h-6 rounded-full border border-gray-800 bg-gray-900 flex items-center justify-center -ml-2 z-0">
+                                                                <span className="text-[8px] font-black text-gold-500">+{totalExercises - exerciseThumbnails.length}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                <div className="flex items-center gap-2 text-[10px] text-gray-500 text-ellipsis overflow-hidden">
+                                                    <Dumbbell className="h-3 w-3 shrink-0" />
+                                                    <span className="truncate break-all">{exerciseNames}</span>
                                                 </div>
                                                 <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-500 font-medium">
                                                     <span>{totalBlocks} bloque{totalBlocks !== 1 ? 's' : ''}</span>
@@ -242,6 +277,12 @@ export default function LoadTemplateModal({ isOpen, onClose, onLoadTemplate }) {
                         </div>
                     )}
                 </div>
+
+                {/* Details Popup */}
+                <ExerciseDetailsModal
+                    exercise={viewingExercise}
+                    onClose={() => setViewingExercise(null)}
+                />
             </div>
         </div>
     )

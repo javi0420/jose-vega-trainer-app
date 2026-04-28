@@ -13,13 +13,46 @@ test.describe('Client Deactivation Flow', () => {
             console.log(`[Dialog] ${dialog.message()}`);
             await dialog.accept();
         });
+        
+        // Helper to handle the mandatory password reset
+        async function handleForcedReset(page, newPass) {
+            if (page.url().includes('update-password')) {
+                await page.fill('input[type="password"] >> nth=0', newPass);
+                await page.fill('input[type="password"] >> nth=1', newPass);
+                await page.click('button:has-text("Actualizar contraseña")');
+                
+                // Wait for success message or redirection
+                await Promise.race([
+                    page.waitForURL(/.*\/app/, { timeout: 15000 }),
+                    expect(page.locator('text=¡Todo listo!')).toBeVisible({ timeout: 15000 })
+                ]);
+
+                if (!page.url().includes('/app')) {
+                    await page.goto('http://localhost:5173/app');
+                }
+            }
+        }
+
+        // Robust login helper for Trainer
+        async function loginAsTrainer(page) {
+            await page.goto('http://localhost:5173/login');
+            await page.fill('input[name="email"]', TRAINER.email);
+            await page.fill('input[name="password"]', TRAINER.pass);
+            await page.click('button[type="submit"]');
+
+            // If base password fails, try the updated one
+            const errorMsg = page.locator('text=Invalid login credentials');
+            if (await errorMsg.isVisible({ timeout: 3000 }).catch(() => false)) {
+                await page.fill('input[name="password"]', TRAINER.pass + '!');
+                await page.click('button[type="submit"]');
+            }
+            
+            await handleForcedReset(page, TRAINER.pass + '!');
+        }
 
         // 1. LOGIN COMO TRAINER
         console.log('--- PASO 1: Login como Trainer ---');
-        await page.goto('http://localhost:5173/login');
-        await page.fill('input[name="email"]', TRAINER.email);
-        await page.fill('input[name="password"]', TRAINER.pass);
-        await page.click('button[type="submit"]');
+        await loginAsTrainer(page);
         await expect(page.locator('button[aria-label="Cerrar sesión"]')).toBeVisible({ timeout: 20000 });
 
         // 2. CREAR UN CLIENTE
@@ -34,13 +67,31 @@ test.describe('Client Deactivation Flow', () => {
         console.log('--- PASO 3: Login Cliente ---');
         await page.click('button[aria-label="Cerrar sesión"]');
         await page.fill('input[name="email"]', clientEmail);
-        await page.fill('input[name="password"]', 'Joaquin2025');
+        await page.fill('input[name="password"]', 'Jose2026');
         await page.click('button[type="submit"]');
+
+        // MANEJAR FORCED PASSWORD RESET
+        await expect(page).toHaveURL(/\/update-password/);
+        await page.fill('input[type="password"] >> nth=0', 'Jose2026!');
+        await page.fill('input[type="password"] >> nth=1', 'Jose2026!');
+        await page.click('button:has-text("Actualizar contraseña")');
+        
+        // Verify success or redirection
+        await Promise.race([
+            page.waitForURL(/.*\/app/, { timeout: 15000 }),
+            expect(page.locator('text=¡Todo listo!')).toBeVisible({ timeout: 15000 })
+        ]);
+        
+        // Wait for auto-redirect or force it
+        if (!page.url().includes('/app')) {
+            await page.goto('http://localhost:5173/app');
+        }
+        await expect(page).toHaveURL(/.*\/app/, { timeout: 15000 });
 
         // Manejar Modal de Privacidad (si aparece) - Espera robusta
         try {
             const consentBtn = page.getByRole('button', { name: /Aceptar y Continuar/i });
-            await consentBtn.waitFor({ state: 'visible', timeout: 10000 });
+            await consentBtn.waitFor({ state: 'visible', timeout: 5000 });
             await consentBtn.click();
             console.log('[Test] Modal de privacidad detectado y aceptado.');
         } catch (e) {
@@ -56,9 +107,8 @@ test.describe('Client Deactivation Flow', () => {
         const logoutBtn = page.locator('button[aria-label="Cerrar sesión"]');
         await expect(logoutBtn).toBeVisible({ timeout: 10000 });
         await logoutBtn.click();
-        await page.fill('input[name="email"]', TRAINER.email);
-        await page.fill('input[name="password"]', TRAINER.pass);
-        await page.click('button[type="submit"]');
+        
+        await loginAsTrainer(page);
 
         await page.fill('input[placeholder="Buscar cliente..."]', clientName);
         await page.waitForTimeout(1000);
@@ -73,15 +123,13 @@ test.describe('Client Deactivation Flow', () => {
         console.log('--- PASO 5: Verificar Bloqueo ---');
         await page.click('button[aria-label="Cerrar sesión"]');
         await page.fill('input[name="email"]', clientEmail);
-        await page.fill('input[name="password"]', 'Joaquin2025');
+        await page.fill('input[name="password"]', 'Jose2026!');
         await page.click('button[type="submit"]');
         await expect(page.locator('text=Esta cuenta ha sido desactivada')).toBeVisible({ timeout: 15000 });
 
         // 6. REACTIVAR
         console.log('--- PASO 6: Reactivar Cliente ---');
-        await page.fill('input[name="email"]', TRAINER.email);
-        await page.fill('input[name="password"]', TRAINER.pass);
-        await page.click('button[type="submit"]');
+        await loginAsTrainer(page);
 
         await page.fill('input[placeholder="Buscar cliente..."]', clientName);
         await page.waitForTimeout(1000);
@@ -98,7 +146,7 @@ test.describe('Client Deactivation Flow', () => {
         await expect(finalLogoutBtn).toBeVisible({ timeout: 10000 });
         await finalLogoutBtn.click();
         await page.fill('input[name="email"]', clientEmail);
-        await page.fill('input[name="password"]', 'Joaquin2025');
+        await page.fill('input[name="password"]', 'Jose2026!');
         await page.click('button[type="submit"]');
 
         // Manejar Modal de Privacidad (si aparece) - Espera robusta

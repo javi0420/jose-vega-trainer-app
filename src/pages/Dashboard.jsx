@@ -398,20 +398,48 @@ function ClientDashboard({ profile }) {
 
 // --- Componente Principal (Role Switcher) ---
 export default function Dashboard() {
-    const { data: profile, isLoading } = useUserRole()
+    const { data: profile, isLoading, error } = useUserRole()
+    const { signOut } = useAuth()
 
     if (isLoading) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-gray-950 text-gold-500">
+            <div className="flex min-h-screen items-center justify-center bg-gray-950 text-gold-500" data-testid="dashboard-loading">
                 <Loader2 className="h-10 w-10 animate-spin" />
             </div>
         )
     }
 
-    if (profile?.role === 'trainer') {
+    if (error || !profile) {
+        return (
+            <div className="flex min-h-screen flex-col items-center justify-center bg-gray-950 p-6 text-center">
+                <div className="mb-4 rounded-full bg-red-500/10 p-4 text-red-500">
+                    <X className="h-8 w-8" />
+                </div>
+                <h2 className="mb-2 text-xl font-bold text-white">No se pudo cargar tu perfil</h2>
+                <p className="mb-6 text-gray-400">Hubo un error al verificar tus permisos. Por favor, intenta cerrar sesión y volver a entrar.</p>
+                <button
+                    onClick={signOut}
+                    className="rounded-xl bg-gray-800 px-6 py-3 font-bold text-white hover:bg-gray-700 transition-all"
+                >
+                    Cerrar Sesión
+                </button>
+            </div>
+        )
+    }
+
+    if (profile.role === 'trainer') {
         return <TrainerDashboard />
     }
 
-    // Default to Client Dashboard
-    return <ClientDashboard profile={profile} />
+    if (profile.role === 'client') {
+        return <ClientDashboard profile={profile} />
+    }
+
+    // Role not recognized or inactive
+    return (
+        <div className="flex min-h-screen flex-col items-center justify-center bg-gray-950 p-6 text-center">
+            <h2 className="mb-2 text-xl font-bold text-white">Acceso Restringido</h2>
+            <p className="text-gray-400">Tu cuenta no tiene un rol asignado válido. Contacta con soporte.</p>
+        </div>
+    )
 }

@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { CheckCircle2, TrendingUp, Award, ChevronDown, ChevronUp, Circle } from 'lucide-react'
+import { CheckCircle2, TrendingUp, Award, ChevronDown, ChevronUp, Circle, MessageSquare } from 'lucide-react'
+import { t } from '../../utils/translations'
 
-export default function ExerciseSummaryCard({ exercise, sets }) {
+export default function ExerciseSummaryCard({ exercise, sets, notes }) {
     const [isExpanded, setIsExpanded] = useState(false)
     const validSets = sets.filter(s => s.completed && s.weight > 0 && s.reps > 0);
     const totalSets = sets?.length || 0;
@@ -34,8 +35,8 @@ export default function ExerciseSummaryCard({ exercise, sets }) {
             <div className="p-4 pb-3">
                 <div className="flex items-start justify-between mb-3">
                     <div>
-                        <h3 className="font-bold text-gray-200 leading-tight">{exercise.name}</h3>
-                        <p className="text-xs text-gray-500 capitalize">{exercise.muscle_group}</p>
+                        <h3 className="font-bold text-gray-200 leading-tight">{exercise.name_es || exercise.name}</h3>
+                        <p className="text-xs text-gray-500 capitalize">{t(exercise.target_muscle || exercise.body_part || exercise.muscle_group)}</p>
                     </div>
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500/10 text-green-500">
                         {hasValidSets ? (
@@ -45,6 +46,14 @@ export default function ExerciseSummaryCard({ exercise, sets }) {
                         )}
                     </div>
                 </div>
+
+                {/* Punto 5: Notas del ejercicio - visibles para cliente y coach */}
+                {notes && (
+                    <div className="mt-2 flex items-start gap-2 rounded-xl bg-blue-500/5 border border-blue-500/10 px-3 py-2">
+                        <MessageSquare className="h-3.5 w-3.5 text-blue-400 mt-0.5 shrink-0" />
+                        <p className="text-xs text-blue-200/70 leading-relaxed italic">{notes}</p>
+                    </div>
+                )}
 
                 {!hasValidSets ? (
                     /* Ejercicio sin datos válidos */

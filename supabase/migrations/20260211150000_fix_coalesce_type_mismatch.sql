@@ -49,7 +49,9 @@ BEGIN
                                         'position', re.position,
                                         'exercises', (
                                             SELECT jsonb_build_object(
-                                                'name', e.name
+                                                'name', e.name,
+                                                'gif_url', e.gif_url,
+                                                'target_muscle', e.target_muscle
                                             ) FROM exercises e WHERE e.id = re.exercise_id
                                         )
                                     ) ORDER BY re.position

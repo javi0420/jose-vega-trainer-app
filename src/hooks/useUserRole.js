@@ -12,7 +12,7 @@ export function useUserRole() {
 
             const { data, error } = await supabase
                 .from('profiles')
-                .select('role, full_name, avatar_url, is_active')
+                .select('role, full_name, avatar_url, is_active, requires_password_change')
                 .eq('id', user.id)
                 .single()
 
@@ -24,7 +24,7 @@ export function useUserRole() {
 
                     const retry = await supabase
                         .from('profiles')
-                        .select('role, full_name, avatar_url, is_active')
+                        .select('role, full_name, avatar_url, is_active, requires_password_change')
                         .eq('id', user.id)
                         .single()
 
@@ -36,7 +36,11 @@ export function useUserRole() {
                 return null
             }
 
-            return data
+            return {
+                ...data,
+                role: data.role || 'client',
+                requires_password_change: !!data.requires_password_change
+            }
         },
         enabled: !!user,
         staleTime: 1000 * 60 * 60, // 1 hour (roles rarely change)

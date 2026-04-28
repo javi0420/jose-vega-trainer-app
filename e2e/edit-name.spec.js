@@ -47,7 +47,7 @@ test.describe('Edit Workout Name', () => {
         } catch (e) { }
 
         // 3. Wait for redirect to Summary/Detail
-        await expect(page).toHaveURL(/\/app\/workout\/.*/, { timeout: 15000 });
+        await expect(page).toHaveURL(/\/app\/workout\/[a-f0-9-]+/, { timeout: 15000 });
 
         // Wait for data load (SummaryHeader)
         await expect(page.locator('text=Volumen Total')).toBeVisible({ timeout: 10000 });

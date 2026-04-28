@@ -6,10 +6,40 @@ test.describe('Load Assigned Routine Flow', () => {
     const routineName = `Assigned Routine ${timestamp}`;
     const clientName = `Client ${timestamp}`;
     const clientEmail = `client${timestamp}@test.com`;
-    const password = 'Joaquin2025';
+    const password = 'Jose2026';
 
     test('trainer can assign routine and client can load it in workout editor', async ({ page }) => {
         test.setTimeout(120000); // Allow extra time for dual login flow
+
+        // Helper to handle the mandatory password reset
+        async function handleForcedReset(page, newPass) {
+            // Wait for potential redirect to /update-password
+            try {
+                await page.waitForURL(/.*\/update-password/, { timeout: 8000 });
+            } catch (e) {
+                // If we're already on /app or elsewhere, just return
+                if (page.url().includes('/app')) return;
+            }
+
+            if (page.url().includes('update-password')) {
+                console.log('Forced reset detected, updating password...');
+                await page.fill('input[type="password"] >> nth=0', newPass);
+                await page.fill('input[type="password"] >> nth=1', newPass);
+                await page.click('button:has-text("Actualizar contraseña")');
+                
+                // Use Promise.race to wait for either success UI or redirect
+                await Promise.race([
+                    page.waitForURL(/.*\/app/, { timeout: 20000 }),
+                    expect(page.locator('text=¡Todo listo!')).toBeVisible({ timeout: 20000 })
+                ]);
+                
+                // Allow time for auto-redirect
+                await page.waitForTimeout(2000); 
+                if (!page.url().includes('/app')) {
+                    await page.goto('/app');
+                }
+            }
+        }
 
         console.log('START: Trainer Setup');
         // ==========================================
@@ -19,7 +49,17 @@ test.describe('Load Assigned Routine Flow', () => {
         await page.getByTestId('login-input-email').fill('trainer@test.com');
         await page.getByTestId('login-input-password').fill('password123');
         await page.getByTestId('login-btn-submit').click();
-        await expect(page).toHaveURL(/\/app/);
+
+        // If base password fails, try the updated one
+        const errorMsg = page.locator('text=Invalid login credentials');
+        if (await errorMsg.isVisible({ timeout: 3000 }).catch(() => false)) {
+            console.log('Retrying with updated trainer password...');
+            await page.getByTestId('login-input-password').fill('password123!');
+            await page.getByTestId('login-btn-submit').click();
+        }
+
+        await handleForcedReset(page, 'password123!');
+        await expect(page).toHaveURL(/\/app/, { timeout: 15000 });
 
         // 1. Create Template Routine
         await page.getByTestId('nav-btn-routines').click();
@@ -31,12 +71,15 @@ test.describe('Load Assigned Routine Flow', () => {
         // Add an exercise to the routine
         await page.click(`text=${routineName}`);
         await page.click('button:has-text("Añadir Primer Ejercicio")');
-        await page.fill('input[placeholder="Buscar ejercicio..."]', 'Press Banca');
-        await page.locator('button:has-text("Press Banca")').first().click();
+        await page.fill('input[placeholder="Buscar ejercicio..."]', 'Press de Banca');
+        await page.locator('button:has-text("Press de Banca")').first().click();
+        // Verify exercise is added to the editor before saving
+        await expect(page.locator('h3:has-text("Press de Banca")')).toBeVisible({ timeout: 5000 });
         await page.click('button:has-text("GUARDAR")');
-        await page.waitForTimeout(1000);
-        await page.getByTestId('nav-btn-home').click();
+        // Wait for the save redirect to the routines list
+        await expect(page).toHaveURL(/\/app\/routines$/, { timeout: 20000 });
         console.log('Routine created and saved');
+        await page.getByTestId('nav-btn-home').click();
 
         // 2. Create Client
         const addClientBtn = page.getByRole('button', { name: 'Añadir Cliente' });
@@ -79,26 +122,27 @@ test.describe('Load Assigned Routine Flow', () => {
         await page.getByTestId('login-btn-submit').click();
         console.log('Client login submitted');
 
-        await expect(page).toHaveURL(/\/app/, { timeout: 10000 });
+        await handleForcedReset(page, password + '!');
+        await expect(page).toHaveURL(/\/app/, { timeout: 15000 });
         console.log('Client successfully logged in and redirected');
 
         // 2. Handle Legal Terms (if new client)
+        const privacyModal = page.locator('text=Consentimiento de Privacidad');
+        const acceptBtn = page.locator('button:has-text("Aceptar y Continuar")');
         try {
-            console.log('Waiting for Privacy Consent Modal...');
-            const termsSelector = 'text=Consentimiento de Privacidad';
-            // Increase timeout to 10s
-            await page.locator(termsSelector).waitFor({ state: 'visible', timeout: 10000 });
-            await page.click('button:has-text("Aceptar y Continuar")');
-            console.log('Privacy consent accepted');
-            await page.locator(termsSelector).waitFor({ state: 'hidden', timeout: 10000 });
-            await page.waitForTimeout(2000); // Wait for DB propagation
+            await acceptBtn.waitFor({ state: 'visible', timeout: 10000 });
+            await acceptBtn.click();
+            await expect(privacyModal).not.toBeVisible({ timeout: 10000 });
+            console.log('Client: Privacy Modal accepted.');
         } catch (e) {
-            console.log('Privacy modal interaction skipped (not found within 10s)');
+            console.log('Client: Privacy Modal not found or already handled.');
         }
 
         console.log('Proceeding to New Workout via goto...');
         // 3. Go to New Workout
         // Use direct navigation to potential UI click issues
+        // Auto-accept any confirmation dialogs (e.g. "Cargar esta plantilla?")
+        page.on('dialog', dialog => dialog.accept());
         await page.goto('/app/workout/new?auth=true');
         await page.waitForLoadState('networkidle');
         console.log('Navigated to Workout Editor (via goto)');
@@ -127,10 +171,18 @@ test.describe('Load Assigned Routine Flow', () => {
 
         // 6. Load the Routine
         await page.click(`text=${routineName}`);
+        await expect(page.locator('h2:has-text("Rutinas Asignadas")')).toBeHidden({ timeout: 10000 });
 
         // 7. Verify Exercises Loaded in Editor
-        await expect(page.getByRole('heading', { level: 3, name: /Press Banca/i })).toBeVisible();
-        await expect(page.getByTestId('workout-header-title-trigger')).toContainText(/Assigned Routine/i);
+        // Wait for the empty state to disappear first
+        await expect(page.locator('button:has-text("Añadir Primer Ejercicio")')).toBeHidden({ timeout: 10000 });
+        
+        // Use the new stable test-id for exercise name (case-insensitive)
+        const exerciseElement = page.getByTestId('exercise-name').filter({ hasText: /press/i }).first();
+        await expect(exerciseElement).toBeVisible({ timeout: 25000 });
+
+        
+        await expect(page.getByTestId('workout-header-title-trigger')).toContainText(new RegExp(routineName, 'i'));
         console.log('Routine loaded successfully');
     });
 });

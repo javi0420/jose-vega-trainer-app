@@ -11,7 +11,17 @@ test.describe('Routines UI', () => {
         await page.getByTestId('login-input-email').fill('trainer@test.com');
         await page.getByTestId('login-input-password').fill('password123');
         await page.getByTestId('login-btn-submit').click();
-        await expect(page).toHaveURL(/\/app/);
+
+        // Handle potential forced password reset
+        if (page.url().includes('update-password')) {
+            await page.fill('input[type="password"] >> nth=0', 'password123!');
+            await page.fill('input[type="password"] >> nth=1', 'password123!');
+            await page.click('button:has-text("Actualizar contraseña")');
+            await expect(page.locator('text=¡Todo listo!')).toBeVisible();
+            await page.waitForTimeout(1500);
+        }
+
+        await expect(page).toHaveURL(/\/app/, { timeout: 15000 });
 
         // Go to routines page using data-testid
         await page.getByTestId('nav-btn-routines').click();

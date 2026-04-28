@@ -99,8 +99,13 @@ test.describe('Muscle Groups: Brazos Split (Bíceps/Tríceps)', () => {
         // Wait for modal to close
         await expect(page.locator('h3:has-text("Nuevo Ejercicio")')).not.toBeVisible({ timeout: 5000 });
 
-        // Verify exercise appears in list with "Bíceps" muscle group
-        await expect(page.locator(`text=${exerciseName}`)).toBeVisible();
+        // Search for the newly created exercise to bypass pagination
+        const searchInput = page.getByTestId('exercise-search-input');
+        await searchInput.fill(exerciseName);
+        await page.waitForTimeout(500); // Wait for debounced search
+
+        // Verify exercise appears in list
+        await expect(page.locator(`h3:has-text("${exerciseName}")`)).toBeVisible({ timeout: 10000 });
 
         // Find the specific exercise card and verify its muscle group
         // Navigate up to the card container and then find the muscle group paragraph

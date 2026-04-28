@@ -43,8 +43,8 @@ test.describe('Sprint v3.11 New Features', () => {
 
         // Add A
         await page.getByTestId('btn-add-block').click();
-        await page.fill('input[placeholder="Buscar ejercicio..."]', 'Press Banca');
-        await page.click('button:has-text("Press Banca")');
+        await page.fill('input[placeholder="Buscar ejercicio..."]', 'Press de Banca');
+        await page.click('button:has-text("Press de Banca")');
 
         // FIX: Add B to same block using new "Agrupar Ejercicio (Superserie)" button
         await page.getByRole('button', { name: /Agrupar Ejercicio/i }).click();
@@ -53,7 +53,7 @@ test.describe('Sprint v3.11 New Features', () => {
 
         // Verify both exercises are present
         const exerciseNames = page.getByRole('heading', { level: 3 });
-        await expect(exerciseNames.nth(0)).toHaveText(/Press Banca/i);
+        await expect(exerciseNames.nth(0)).toHaveText(/Press de Banca/i);
         await expect(exerciseNames.nth(1)).toHaveText(/Sentadilla/i);
 
         // NOTE: Reordering now uses ReorderExercisesModal (Kebab menu -> "Reordenar ejercicios")
@@ -80,8 +80,8 @@ test.describe('Sprint v3.11 New Features', () => {
 
         // Block 1
         await page.getByTestId('btn-add-block', { exact: true }).click();
-        await page.fill('input[placeholder="Buscar ejercicio..."]', 'Press Banca');
-        await page.click('button:has-text("Press Banca")');
+        await page.fill('input[placeholder="Buscar ejercicio..."]', 'Press de Banca');
+        await page.click('button:has-text("Press de Banca")');
 
         // Block 2
         await page.getByTestId('btn-add-block').click();
@@ -89,7 +89,7 @@ test.describe('Sprint v3.11 New Features', () => {
         await page.click('button:has-text("Sentadilla")');
 
         const blockTitles = page.getByRole('heading', { level: 3 });
-        await expect(blockTitles.nth(0)).toHaveText(/Press Banca/i);
+        await expect(blockTitles.nth(0)).toHaveText(/Press de Banca/i);
         await expect(blockTitles.nth(1)).toHaveText(/Sentadilla/i);
 
         // Click Move Block Down in first block
@@ -97,6 +97,6 @@ test.describe('Sprint v3.11 New Features', () => {
 
         // Verify order
         await expect(blockTitles.nth(0)).toHaveText(/Sentadilla/i);
-        await expect(blockTitles.nth(1)).toHaveText(/Press Banca/i);
+        await expect(blockTitles.nth(1)).toHaveText(/Press de Banca/i);
     });
 });

@@ -2,13 +2,16 @@ import { useState } from 'react'
 import { useExercises } from '../hooks/useExercises'
 import { Plus, Search, Edit2, Trash2, X, Check, Dumbbell } from 'lucide-react'
 import { normalizeText } from '../utils/text'
+import { t } from '../utils/translations'
+import ExerciseDetailsModal from './ExerciseDetailsModal'
 
 export default function ExerciseCatalog() {
     const [searchTerm, setSearchTerm] = useState('')
     const { exercises, isLoading, createExercise, updateExercise, deleteExercise, fetchNextPage, hasNextPage, isFetchingNextPage } = useExercises(searchTerm)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingExercise, setEditingExercise] = useState(null)
-    const [form, setForm] = useState({ name: '', muscle_group: '' })
+    const [viewingExercise, setViewingExercise] = useState(null)
+    const [form, setForm] = useState({ name: '', body_part: '' })
 
     // Client-side filtering removed in favor of Server-side
 
@@ -16,21 +19,27 @@ export default function ExerciseCatalog() {
         e.preventDefault()
         try {
             if (editingExercise) {
-                await updateExercise.mutateAsync({ id: editingExercise.id, ...form })
-                setSearchTerm(form.name) // Search for it to show it
+                await updateExercise.mutateAsync({ 
+                    id: editingExercise.id, 
+                    ...form,
+                    name_es: form.name // Keep in sync for search
+                })
             } else {
-                await createExercise.mutateAsync(form)
-                setSearchTerm(form.name) // Search for it to show it
+                await createExercise.mutateAsync({
+                    ...form,
+                    name_es: form.name // Keep in sync for search
+                })
             }
             closeModal()
         } catch (err) {
+            console.error('DEBUG: handleSubmit error:', err)
             alert(err.message)
         }
     }
 
     const handleEdit = (ex) => {
         setEditingExercise(ex)
-        setForm({ name: ex.name, muscle_group: ex.muscle_group || '' })
+        setForm({ name: ex.name, body_part: ex.body_part || ex.muscle_group || '' })
         setIsModalOpen(true)
     }
 
@@ -47,10 +56,8 @@ export default function ExerciseCatalog() {
     const closeModal = () => {
         setIsModalOpen(false)
         setEditingExercise(null)
-        setForm({ name: '', muscle_group: '' })
+        setForm({ name: '', body_part: '' })
     }
-
-    if (isLoading) return <div className="flex justify-center p-8"><Dumbbell className="animate-spin text-gold-500" /></div>
 
     return (
         <div className="space-y-6">
@@ -81,38 +88,75 @@ export default function ExerciseCatalog() {
                 />
             </div>
 
-            {/* Lista */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {exercises?.map(ex => (
-                    <div key={ex.id} className="bg-gray-900 border border-gray-800 p-4 rounded-xl flex justify-between items-center group hover:border-gray-700 transition-all">
-                        <div>
-                            <h3 className="font-semibold text-white">{ex.name}</h3>
-                            <p className="text-sm text-gray-400 capitalize">{ex.muscle_group || 'General'}</p>
-                            {ex.created_by && (
-                                <span className="text-[10px] bg-gold-500/10 text-gold-500 px-1.5 py-0.5 rounded border border-gold-500/20 mt-1 inline-block font-bold">
-                                    Personalizado
-                                </span>
-                            )}
-                        </div>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => handleEdit(ex)}
-                                className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-all"
-                                title="Editar"
-                            >
-                                <Edit2 size={18} />
-                            </button>
-                            <button
-                                onClick={() => handleDelete(ex.id)}
-                                data-testid={`delete-exercise-${ex.id}`}
-                                className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
-                                title="Eliminar"
-                            >
-                                <Trash2 size={18} />
-                            </button>
-                        </div>
+                {isLoading ? (
+                    <div className="col-span-full flex justify-center p-12">
+                        <Dumbbell className="animate-spin text-gold-500 h-10 w-10 shrink-0" />
                     </div>
-                ))}
+                ) : exercises?.length === 0 ? (
+                    <div className="col-span-full text-center p-8 text-gray-500 font-medium">
+                        No se encontraron ejercicios.
+                    </div>
+                ) : (
+                    exercises?.map(ex => (
+                        <div
+                            key={ex.id}
+                            onClick={() => setViewingExercise(ex)}
+                            className="bg-gray-900 border border-gray-800 p-4 rounded-xl flex justify-between items-center group hover:border-gray-700 transition-all gap-4 cursor-pointer"
+                        >
+                            <div className="flex gap-4 items-center overflow-hidden">
+                                {ex.gif_url ? (
+                                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg shrink-0 border border-gray-800/50 overflow-hidden bg-gold-500">
+                                        <img
+                                            src={ex.gif_url}
+                                            alt={ex.name_es || ex.name}
+                                            className="w-full h-full object-cover"
+                                            style={{ mixBlendMode: 'multiply', filter: 'grayscale(100%) contrast(1.1)' }}
+                                            loading="lazy"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg bg-gray-800 shrink-0 flex items-center justify-center border border-gray-700/50">
+                                        <Dumbbell className="text-gray-600" size={32} />
+                                    </div>
+                                )}
+                                <div className="min-w-0">
+                                    <h3 className="font-semibold text-white truncate" title={ex.name_es || ex.name}>{ex.name_es || ex.name}</h3>
+                                    <p className="text-sm text-gray-400 capitalize truncate">
+                                        {t(ex.target_muscle || ex.body_part || ex.muscle_group || 'General')}
+                                    </p>
+                                    {ex.equipment && (
+                                        <p className="text-xs text-gray-500 capitalize truncate">
+                                            Eq: {t(ex.equipment.replace('_', ' '))}
+                                        </p>
+                                    )}
+                                    {ex.created_by && (
+                                        <span className="text-[10px] bg-gold-500/10 text-gold-500 px-1.5 py-0.5 rounded border border-gold-500/20 mt-1 inline-block font-bold">
+                                            Personalizado
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex gap-2 shrink-0">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleEdit(ex); }}
+                                    className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-all"
+                                    title="Editar"
+                                >
+                                    <Edit2 size={18} />
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleDelete(ex.id); }}
+                                    data-testid={`delete-exercise-${ex.id}`}
+                                    className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                                    title="Eliminar"
+                                >
+                                    <Trash2 size={18} />
+                                </button>
+                            </div>
+                        </div>
+                    ))
+                )}
             </div>
 
             {/* Load More Button */}
@@ -131,8 +175,8 @@ export default function ExerciseCatalog() {
 
             {/* Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-gray-900 border border-gray-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
+                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md rounded-[2rem] border border-gray-800 bg-gray-900 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] shadow-gold-500/10">
                         <div className="p-6 border-b border-gray-800 flex justify-between items-center">
                             <h3 className="text-xl font-bold text-white">
                                 {editingExercise ? 'Editar Ejercicio' : 'Nuevo Ejercicio'}
@@ -159,8 +203,8 @@ export default function ExerciseCatalog() {
                                 <select
                                     data-testid="exercise-muscle-group-select"
                                     className="w-full bg-gray-800 border border-gray-700 rounded-lg h-12 px-4 text-white text-base focus:ring-2 focus:ring-gold-500/20 focus:border-gold-500/50 outline-none"
-                                    value={form.muscle_group}
-                                    onChange={(e) => setForm({ ...form, muscle_group: e.target.value })}
+                                    value={form.body_part}
+                                    onChange={(e) => setForm({ ...form, body_part: e.target.value })}
                                 >
                                     <option value="">Seleccionar...</option>
                                     <option value="pecho">Pecho</option>
@@ -194,6 +238,12 @@ export default function ExerciseCatalog() {
                     </div>
                 </div>
             )}
+
+            {/* View Details Modal */}
+            <ExerciseDetailsModal
+                exercise={viewingExercise}
+                onClose={() => setViewingExercise(null)}
+            />
         </div>
     )
 }

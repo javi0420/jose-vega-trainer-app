@@ -7,14 +7,14 @@ security definer set search_path = public
 language plpgsql
 as $$
 declare
-    v_role public.user_role;
+    v_role text;
 begin
-    -- Extract the role as text and cast it explicitly to public.user_role
+    -- Extract the role as text
     -- If null or invalid, fallback to 'client'
     begin
-        v_role := coalesce(new.raw_user_meta_data->>'role', 'client')::public.user_role;
+        v_role := coalesce(new.raw_user_meta_data->>'role', 'client');
     exception when others then
-        v_role := 'client'::public.user_role;
+        v_role := 'client';
     end;
 
     if new.raw_user_meta_data->>'role' = 'trainer' then

@@ -42,7 +42,7 @@ describe('WorkoutBlock - Timer Integration', () => {
         id: 'block-1',
         exercises: [{
             id: 'ex-1',
-            name: 'Press Banca',
+            name: 'Press de Banca',
             muscle_group: 'Pecho',
             target_rest_time: 120, // 2 minutes
             sets: [

@@ -8,7 +8,7 @@ vi.mock('../hooks/useExercises')
 
 describe('ExerciseCatalog', () => {
     const mockExercises = [
-        { id: '1', name: 'Press Banca', muscle_group: 'pecho', created_by: 'user1' },
+        { id: '1', name: 'Press de Banca', muscle_group: 'pecho', created_by: 'user1' },
         { id: '2', name: 'Sentadilla', muscle_group: 'pierna', created_by: null }
     ]
 
@@ -32,7 +32,7 @@ describe('ExerciseCatalog', () => {
 
     test('renders exercise list', () => {
         render(<ExerciseCatalog />)
-        expect(screen.getByText('Press Banca')).toBeDefined()
+        expect(screen.getByText('Press de Banca')).toBeDefined()
         expect(screen.getByText('Sentadilla')).toBeDefined()
     })
 
@@ -43,7 +43,7 @@ describe('ExerciseCatalog', () => {
         // Buscar "pierna" debería encontrar "pierna" (aunque no tenga tildes en el mock)
         fireEvent.change(searchInput, { target: { value: 'piérná' } })
         expect(screen.getByText('Sentadilla')).toBeDefined()
-        expect(screen.queryByText('Press Banca')).toBeNull()
+        expect(screen.queryByText('Press de Banca')).toBeNull()
 
         // Buscar "sentadilla" con tilde
         fireEvent.change(searchInput, { target: { value: 'sentadillá' } })
@@ -97,6 +97,6 @@ describe('ExerciseCatalog', () => {
         fireEvent.click(editBtns[0])
 
         expect(screen.getByText('Editar Ejercicio')).toBeDefined()
-        expect(screen.getByDisplayValue('Press Banca')).toBeDefined()
+        expect(screen.getByDisplayValue('Press de Banca')).toBeDefined()
     })
 })

@@ -1,10 +1,63 @@
 import { test, expect } from '@playwright/test';
 
+// Centralized, robust helper to handle the mandatory password reset
+async function handleForcedReset(page, newPass) {
+    if (page.url().includes('update-password')) {
+        console.log(`[AUTH] Forced reset detected at ${page.url()}. Updating password...`);
+        await page.fill('input[type="password"] >> nth=0', newPass);
+        await page.fill('input[type="password"] >> nth=1', newPass);
+        await page.click('button:has-text("Actualizar contraseña")');
+        
+        // Wait for the success state or redirect
+        await Promise.race([
+            page.waitForURL(/\/app/, { timeout: 15000 }),
+            expect(page.locator('text=¡Todo listo!')).toBeVisible({ timeout: 15000 })
+        ]);
+        
+        if (!page.url().includes('/app')) {
+            await page.goto('/app');
+        }
+        await expect(page).toHaveURL(/\/app/, { timeout: 10000 });
+        console.log('[AUTH] Forced reset handled successfully.');
+    }
+}
+
+// Robust trainer login helper that tries both password variants
+async function loginAsTrainer(page) {
+    const passwords = ['password123', 'password123!'];
+    let success = false;
+
+    for (const pass of passwords) {
+        console.log(`[AUTH] Attempting trainer login with password: ${pass}`);
+        await page.goto('/');
+        await page.fill('input[type="email"]', 'trainer@test.com');
+        await page.fill('input[type="password"]', pass);
+        await page.click('button:has-text("Iniciar Sesión")');
+        
+        await page.waitForTimeout(2000);
+        
+        if (page.url().includes('update-password')) {
+            await handleForcedReset(page, 'password123!');
+            success = true;
+            break;
+        }
+        
+        if (page.url().includes('/app')) {
+            success = true;
+            break;
+        }
+    }
+
+    if (!success) {
+        throw new Error('Failed to login as trainer with either password variant');
+    }
+}
+
 test.describe('Feedback Loop & Collaboration', () => {
 
     test('Full Feedback Cycle: Trainer Review -> Client Read Confirmation', async ({ browser }) => {
         // Increase timeout for this complex test
-        test.setTimeout(120000);
+        test.setTimeout(180000);
 
         const trainerContext = await browser.newContext();
         const clientContext = await browser.newContext();
@@ -12,11 +65,7 @@ test.describe('Feedback Loop & Collaboration', () => {
         const clientPage = await clientContext.newPage();
 
         // --- SETUP: Trainer Creates Client ---
-        await trainerPage.goto('/');
-        await trainerPage.fill('input[placeholder="nombre@ejemplo.com"]', 'trainer@test.com');
-        await trainerPage.fill('input[placeholder="••••••••"]', 'password123');
-        await trainerPage.waitForTimeout(500); // Wait for state update
-        await trainerPage.click('button:has-text("Iniciar Sesión")');
+        await loginAsTrainer(trainerPage);
         await expect(trainerPage).toHaveURL('/app', { timeout: 30000 });
 
         const uniqueId = Date.now();
@@ -38,8 +87,12 @@ test.describe('Feedback Loop & Collaboration', () => {
         // --- STEP 1: Client Creates Workout ---
         await clientPage.goto('/');
         await clientPage.fill('input[placeholder="nombre@ejemplo.com"]', clientEmail);
-        await clientPage.fill('input[placeholder="••••••••"]', 'Joaquin2025');
+        await clientPage.fill('input[placeholder="••••••••"]', 'Jose2026');
         await clientPage.click('button:has-text("Iniciar Sesión")');
+        
+        await clientPage.waitForTimeout(2000);
+        await handleForcedReset(clientPage, 'Jose2026!');
+        await expect(clientPage).toHaveURL(/\/app/);
 
         // FIX: Wait for app to settle
         await clientPage.waitForLoadState('networkidle');
@@ -56,7 +109,8 @@ test.describe('Feedback Loop & Collaboration', () => {
             console.log('Privacy modal not shown or already accepted');
         }
 
-        await clientPage.click('button:has-text("Nuevo Entreno")');
+        await expect(clientPage.getByTestId('new-workout-btn')).toBeVisible({ timeout: 15000 });
+        await clientPage.getByTestId('new-workout-btn').click({ force: true });
         await clientPage.waitForURL(/\/app\/workout\/new/);
 
         // Add Exercise

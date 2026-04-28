@@ -9,7 +9,7 @@ import { BrowserRouter } from 'react-router-dom'
 vi.mock('../hooks/useExercises', () => ({
     useExercises: () => ({
         data: [
-            { id: 'ex-1', name: 'Press Banca', muscle_group: 'pecho' }
+            { id: 'ex-1', name: 'Press de Banca', muscle_group: 'pecho' }
         ],
         isLoading: false,
         createExercise: { mutateAsync: vi.fn() }
@@ -95,9 +95,9 @@ describe('Visual & Logic Updates', () => {
 
         // Add an exercise
         fireEvent.click(screen.getByLabelText('Añadir ejercicio'))
-        fireEvent.click(screen.getByText('Press Banca'))
+        fireEvent.click(screen.getByText('Press de Banca'))
 
-        expect(screen.getByText('Press Banca')).toBeInTheDocument()
+        expect(screen.getByText('Press de Banca')).toBeInTheDocument()
 
         // Unmount (simulating leaving page)
         unmount()
@@ -111,6 +111,6 @@ describe('Visual & Logic Updates', () => {
         renderWithProviders(<WorkoutEditor />)
 
         // Should auto-load
-        expect(screen.getByText('Press Banca')).toBeInTheDocument()
+        expect(screen.getByText('Press de Banca')).toBeInTheDocument()
     })
 })

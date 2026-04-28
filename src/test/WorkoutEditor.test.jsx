@@ -38,7 +38,7 @@ vi.mock('../context/TimerContext', () => ({
 vi.mock('../hooks/useExercises', () => ({
     useExercises: () => ({
         exercises: [
-            { id: 'ex-1', name: 'Press Banca', muscle_group: 'pecho' },
+            { id: 'ex-1', name: 'Press de Banca', muscle_group: 'pecho' },
             { id: 'ex-2', name: 'Aperturas', muscle_group: 'pecho' }
         ],
         isLoading: false
@@ -98,7 +98,7 @@ describe('WorkoutEditor', () => {
         // Check it is added to the routine
         expect(screen.queryByText('Tu rutina está vacía.')).not.toBeInTheDocument()
         // Here we use queryAllByText or just check it exists in the document
-        expect(screen.getAllByText('Press Banca').length).toBeGreaterThan(0)
+        expect(screen.getAllByText('Press de Banca').length).toBeGreaterThan(0)
     })
 
     it('can create a Superset (Group Exercises)', async () => {
@@ -117,7 +117,7 @@ describe('WorkoutEditor', () => {
         await user.click(screen.getByTestId('exercise-item-ex-2'))
 
         // 4. Verify both are present in routine
-        expect(screen.getAllByText('Press Banca').length).toBeGreaterThan(0)
+        expect(screen.getAllByText('Press de Banca').length).toBeGreaterThan(0)
         expect(screen.getAllByText('Aperturas').length).toBeGreaterThan(0)
 
         // Verify positions (A and B)
@@ -150,7 +150,7 @@ describe('WorkoutEditor', () => {
         await waitFor(() => {
             expect(screen.queryAllByText('Aperturas').length).toBe(0)
         })
-        expect(screen.getAllByText('Press Banca').length).toBeGreaterThan(0)
+        expect(screen.getAllByText('Press de Banca').length).toBeGreaterThan(0)
     })
 
     it('deletes block if last exercise is removed', async () => {

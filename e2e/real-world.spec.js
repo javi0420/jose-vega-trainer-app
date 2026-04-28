@@ -41,27 +41,26 @@ test.describe('Real World Flows (Live Database)', () => {
         await page.fill('input[placeholder="Buscar ejercicio..."]', adHocName);
 
         // Wait for the "Usar 'Name' (Solo este entreno)" button
-        // Logic might take a split second to appear
-        // Note: UI uses double quotes: Usar "Name" ...
-        const adHocBtn = page.locator('button').filter({ hasText: `Usar "${adHocName}"` });
+        const adHocBtn = page.locator('button').filter({ hasText: new RegExp(`Usar "${adHocName}"`, 'i') });
+        await expect(adHocBtn).toBeVisible({ timeout: 5000 });
         await adHocBtn.click();
 
         // 4. VERIFY IT ADDED
-        await expect(page.getByRole('heading', { level: 3, name: new RegExp(adHocName, 'i') })).toBeVisible();
+        await expect(page.getByTestId('exercise-name').filter({ hasText: new RegExp(adHocName, 'i') }).first()).toBeVisible({ timeout: 10000 });
 
         // 5. ADD SET
         // Check if sets exist (usually 0 for new exercise?)
-        const setRows = page.locator('input[placeholder="kg"]');
+        const setRows = page.getByTestId('workout-input-weight');
         if (await setRows.count() === 0) {
-            await page.locator('button:has-text("Añadir Set")').first().click();
+            await page.getByTestId('workout-btn-add-set').first().click();
         }
 
         // Fill Data
-        await page.locator('input[placeholder="kg"]').first().fill('20');
-        await page.locator('input[placeholder="reps"]').first().fill('12');
+        await page.getByTestId('workout-input-weight').first().fill('20');
+        await page.getByTestId('workout-input-reps').first().fill('12');
 
         // 6. COMPLETE SET
-        const checkBtn = page.getByLabel('Completar set').first();
+        const checkBtn = page.getByTestId('workout-btn-complete-set').first();
         await checkBtn.click();
 
         // 7. FINISH WORKOUT - handle confirm dialog if it appears
@@ -74,6 +73,9 @@ test.describe('Real World Flows (Live Database)', () => {
 
         // Wait for redirect to saved workout detail (UUID format)
         await expect(page).toHaveURL(/\/app\/workout\/[a-f0-9-]{36}/, { timeout: 20000 });
+        
+        // Verify summary shows the name
+        await expect(page.getByRole('heading', { name: new RegExp(adHocName, 'i') })).toBeVisible({ timeout: 10000 });
 
         console.log('Client flow success');
     });

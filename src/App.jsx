@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -96,10 +96,10 @@ function App() {
                                 {/* Public Legal Terms Route */}
                                 <Route path="/legal-terms" element={<LegalTerms />} />
 
-                                {/* Recovery Flow Route */}
-                                <Route path="/update-password" element={<UpdatePassword />} />
+
 
                                 {/* Authenticated Routes wrapped in Layout */}
+                                <Route path="/update-password" element={<UpdatePassword />} />
                                 <Route element={<ProtectedRoute />}>
                                     <Route element={<Layout />}>
                                         <Route path="/app" element={<Dashboard />} />
@@ -138,17 +138,24 @@ function App() {
 // Consent Guard Component - shows modal when user needs to accept terms
 // Only applies to clients, not trainers (who are data controllers)
 function ConsentGuard() {
+    const location = useLocation();
     const { user } = useAuth();
-    const { data: profile } = useUserRole();
-    const { needsConsent, isLoading } = usePrivacyConsent();
+    const { data: profile, isLoading: roleLoading } = useUserRole();
+    const { needsConsent, isLoading: consentLoading } = usePrivacyConsent();
+    
+    // Don't show on password update route or login to avoid interception
+    // Early returns MUST come after all hook declarations
+    if (location.pathname.startsWith('/update-password') || location.pathname === '/') return null;
 
     // Only check consent if user is authenticated
     if (!user) return null;
 
+    // Wait for data to be ready
+    if (roleLoading || consentLoading || !profile) return null;
+
     // Trainers don't need to accept terms (they are data controllers, not subjects)
     if (profile?.role === 'trainer') return null;
 
-    if (isLoading || !profile) return null; // Wait for profile as well
     if (!needsConsent) return null;
 
     return <LegalModal />;

@@ -19,7 +19,6 @@ export default function Progress() {
             const { data } = await supabase
                 .from('exercises')
                 .select('id, name')
-                .eq('is_active', true)
                 .order('name');
             if (data) setExercises(data);
         }

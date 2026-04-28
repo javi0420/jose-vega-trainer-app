@@ -1,6 +1,7 @@
 import { useState, memo, Fragment } from 'react'
 import { Menu, Transition } from '@headlessui/react'
-import { Plus, Trash2, Check, ClipboardList, Loader2, BarChart2, Timer, ChevronUp, ChevronDown, MoreVertical, ArrowUpDown, RefreshCw } from 'lucide-react'
+import { Plus, Trash2, Check, ClipboardList, Loader2, BarChart2, Timer, ChevronUp, ChevronDown, MoreVertical, ArrowUpDown, RefreshCw, Dumbbell } from 'lucide-react'
+
 import { clsx } from 'clsx'
 import { supabase } from '../lib/supabase'
 import LastPerformance from './LastPerformance'
@@ -8,6 +9,8 @@ import LastNote from './LastNote'
 import ExerciseChart from './ExerciseChart'
 import { useTimer } from '../context/TimerContext'
 import { generateUUID } from '../utils/uuid'
+import { t } from '../utils/translations'
+import ExerciseDetailsModal from './ExerciseDetailsModal'
 
 const WorkoutBlock = memo(function WorkoutBlock({
     block,
@@ -48,6 +51,7 @@ const WorkoutBlock = memo(function WorkoutBlock({
     const [chartsVisible, setChartsVisible] = useState({});
     const [timerSettingsVisible, setTimerSettingsVisible] = useState({}); // exerciseId -> bool
     const [loadingLast, setLoadingLast] = useState({}); // Diccionario exerciseId -> bool
+    const [viewingExercise, setViewingExercise] = useState(null); // Para el modal de detalles
 
     const toggleChart = (exerciseId) => {
         setChartsVisible(prev => ({ ...prev, [exerciseId]: !prev[exerciseId] }));
@@ -79,6 +83,7 @@ const WorkoutBlock = memo(function WorkoutBlock({
             prevWeight: previousSet ? (previousSet.weight || previousSet.prevWeight) : '', // Placeholder logic
             prevReps: previousSet ? (previousSet.reps || previousSet.prevReps) : '', // Placeholder logic
             rpe: '',
+            prevRpe: previousSet ? (previousSet.rpe || previousSet.prevRpe) : '', // Placeholder logic
             rest_seconds: '',
             tempo: '',
             completed: false
@@ -194,6 +199,7 @@ const WorkoutBlock = memo(function WorkoutBlock({
                     prevWeight: s.weight,
                     prevReps: s.reps,
                     rpe: '',
+                    prevRpe: s.rpe, // Punto 4: Solo como placeholder
                     rest_seconds: s.rest_seconds || '',
                     tempo: '',
                     completed: false
@@ -203,7 +209,7 @@ const WorkoutBlock = memo(function WorkoutBlock({
                 updatedExercises[exerciseIndex] = {
                     ...targetExercise,
                     sets: newSets,
-                    notes: targetExercise.notes || data[0].note || ''
+                    notes: targetExercise.notes || ''
                 };
                 updateBlock(block.id, { ...block, exercises: updatedExercises });
 
@@ -285,17 +291,44 @@ const WorkoutBlock = memo(function WorkoutBlock({
                 return (
                     <div key={exercise.id + '-' + index} className={clsx("p-6", index < exercises.length - 1 && "border-b border-white/5")}>
                         {/* Header del Ejercicio */}
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-4">
+                        <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-start gap-4">
                                 {/* Indicador A/B/C si hay varios */}
                                 {exercises.length > 1 && (
-                                    <div className="h-8 w-8 flex items-center justify-center rounded-xl bg-gold-500/10 text-[10px] font-black text-gold-500 border border-gold-500/10">
+                                    <div className="h-12 w-12 shrink-0 flex items-center justify-center rounded-xl bg-gold-500/10 text-[14px] font-black text-gold-500 border border-gold-500/10 mt-0.5">
                                         {String.fromCharCode(64 + (index + 1))}
                                     </div>
                                 )}
+                                {/* Contenedor de la imagen clickeable para abrir detalles */}
+                                <div
+                                    onClick={() => setViewingExercise(exercise)}
+                                    className="cursor-pointer hover:opacity-80 transition-opacity"
+                                    title="Ver detalles del ejercicio"
+                                >
+                                    {exercise.gif_url ? (
+                                        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl shrink-0 shadow-lg shadow-gold-500/5 mt-0.5 border border-gray-800/50 overflow-hidden bg-gold-500">
+                                            <img
+                                                src={exercise.gif_url}
+                                                alt={exercise.name_es || exercise.name}
+                                                className="w-full h-full object-cover"
+                                                style={{ mixBlendMode: 'multiply', filter: 'grayscale(100%) contrast(1.1)' }}
+                                                loading="lazy"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-gray-800 shrink-0 flex items-center justify-center mt-0.5 border border-gray-700/50">
+                                            <Dumbbell className="text-gray-600 h-8 w-8" />
+                                        </div>
+                                    )}
+                                </div>
                                 <div className="flex flex-col">
                                     <div className="flex items-center gap-2">
-                                        <h3 className="font-black text-lg text-white leading-tight tracking-tight uppercase">{exercise.name}</h3>
+                                        <h3 
+                                            data-testid="exercise-name"
+                                            className="font-black text-lg text-white leading-tight tracking-tight uppercase"
+                                        >
+                                            {exercise.name_es || exercise.name}
+                                        </h3>
                                         {exercises.length > 1 && (
                                             <div className="flex items-center">
                                                 <button
@@ -317,9 +350,16 @@ const WorkoutBlock = memo(function WorkoutBlock({
                                             </div>
                                         )}
                                     </div>
-                                    <span className="inline-block mt-0.5 w-fit rounded-lg bg-white/5 px-2 py-0.5 text-[9px] font-black text-gray-500 uppercase tracking-[0.15em] border border-white/5">
-                                        {exercise.muscle_group}
-                                    </span>
+                                    <div className="flex flex-wrap gap-1 mt-1.5">
+                                        <span className="inline-block rounded-lg bg-white/5 px-2 py-0.5 text-[9px] font-black text-gray-500 uppercase tracking-[0.15em] border border-white/5">
+                                            {t(exercise.target_muscle || exercise.body_part || exercise.muscle_group || 'General')}
+                                        </span>
+                                        {exercise.equipment && (
+                                            <span className="inline-block rounded-lg bg-gold-500/5 px-2 py-0.5 text-[9px] font-black text-gold-500 uppercase tracking-[0.15em] border border-gold-500/10">
+                                                {t(exercise.equipment.replace('_', ' '))}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
@@ -481,7 +521,6 @@ const WorkoutBlock = memo(function WorkoutBlock({
                         </div>
 
                         {/* Last Performance Widget */}
-                        <LastNote exerciseId={exercise.id} />
                         <LastPerformance exerciseId={exercise.id} />
 
                         {/* Exercise Notes */}
@@ -548,7 +587,7 @@ const WorkoutBlock = memo(function WorkoutBlock({
                                             inputMode="decimal"
                                             value={set.rpe || ''}
                                             onChange={(e) => handleSetChange(index, set.id, 'rpe', e.target.value)}
-                                            placeholder="-"
+                                            placeholder={set.prevRpe != null ? String(set.prevRpe) : "-"}
                                             data-testid="workout-input-rpe"
                                             className="h-11 w-full rounded-xl bg-black/10 border border-white/5 text-center text-base font-black text-gold-500/60 focus:border-gold-500/50 focus:outline-none px-0 placeholder-gray-500 transition-all"
                                         />
@@ -595,6 +634,12 @@ const WorkoutBlock = memo(function WorkoutBlock({
                     Agrupar Ejercicio (Superserie)
                 </button>
             </div>
+
+            {/* View Details Modal for Active Workout */}
+            <ExerciseDetailsModal
+                exercise={viewingExercise}
+                onClose={() => setViewingExercise(null)}
+            />
         </div>
     )
 })

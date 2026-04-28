@@ -14,6 +14,7 @@ import ReplaceExerciseModal from '../components/ReplaceExerciseModal'
 import ReorderExercisesModal from '../components/ReorderExercisesModal'
 import { generateUUID } from '../utils/uuid'
 import { normalizeText } from '../utils/text'
+import { t } from '../utils/translations'
 import { offlineQueue } from '../lib/offlineQueue'
 import toast from 'react-hot-toast'
 
@@ -121,15 +122,16 @@ export default function WorkoutEditor() {
                                     reps: '',
                                     prevWeight: re.target_weight,
                                     prevReps: re.target_reps || (parseInt(re.default_reps) || ''),
-                                    rpe: defaultRpe,
+                                    rpe: '',          // Punto 4: vacío como el peso, no se rellena automáticamente
+                                    prevRpe: defaultRpe, // Solo como placeholder
                                     completed: false
                                 }));
 
                                 return {
                                     ...re.exercises,
                                     id: re.exercises?.id || generateUUID(),
-                                    name: re.custom_exercise_name || re.exercises?.name || 'Ejercicio Personalizado',
-                                    muscle_group: re.exercises?.muscle_group || 'General',
+                                    name: re.custom_exercise_name || re.exercises?.name_es || re.exercises?.name || 'Ejercicio Personalizado',
+                                    muscle_group: t(re.exercises?.target_muscle || re.exercises?.body_part || re.exercises?.muscle_group || 'General'),
                                     position: re.position,
                                     sets: sets,
                                     notes: re.notes
@@ -231,9 +233,10 @@ export default function WorkoutEditor() {
                         const exerciseData = re.exercises || re.exercise || re;
 
                         return {
+                            ...exerciseData,
                             id: re.exercise_id || exerciseData.id || generateUUID(),
-                            name: exerciseData.name || re.custom_exercise_name || 'Ejercicio',
-                            muscle_group: exerciseData.muscle_group || 'General',
+                            name: re.custom_exercise_name || exerciseData.name_es || exerciseData.name || 'Ejercicio',
+                            muscle_group: t(exerciseData.target_muscle || exerciseData.body_part || exerciseData.muscle_group || 'General'),
                             position: re.position || 'A',
                             isAdHoc: !re.exercise_id && !exerciseData.id,
                             sets: Array.from({ length: re.default_sets || 3 }, (_, i) => ({
@@ -243,7 +246,8 @@ export default function WorkoutEditor() {
                                 reps: '',
                                 prevWeight: re.target_weight?.toString() || '',
                                 prevReps: re.target_reps?.toString() || re.default_reps || '',
-                                rpe: re.default_rpe || '',
+                                rpe: '',                           // Punto 4: vacío como el peso
+                                prevRpe: re.default_rpe || '',     // Solo como placeholder
                                 rest_seconds: '',
                                 tempo: '',
                                 completed: false
@@ -311,8 +315,7 @@ export default function WorkoutEditor() {
                     order_index: bIdx,
                     type: block.type,
                     exercises: block.exercises.map(ex => {
-                        const isValidUUID = (id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
-                        const effectiveIsAdHoc = ex.isAdHoc || !isValidUUID(ex.id);
+                        const effectiveIsAdHoc = !!ex.isAdHoc;
 
                         return {
                             exercise_id: effectiveIsAdHoc ? null : ex.id,
@@ -736,10 +739,10 @@ export default function WorkoutEditor() {
                                                 className="flex w-full min-h-[44px] items-center gap-4 rounded-lg px-4 py-3 text-left hover:bg-gray-900 active:bg-gray-800 touch-manipulation"
                                             >
                                                 <div className="flex-1">
-                                                    <p className="font-medium text-gray-200">{ex.name}</p>
-                                                    {ex.muscle_group && (
+                                                    <p className="font-medium text-gray-200">{ex.name_es || ex.name}</p>
+                                                    {(ex.target_muscle || ex.muscle_group) && (
                                                         <span className="inline-block rounded bg-gray-800 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-gray-400">
-                                                            {ex.muscle_group}
+                                                            {t(ex.target_muscle || ex.muscle_group)}
                                                         </span>
                                                     )}
                                                 </div>

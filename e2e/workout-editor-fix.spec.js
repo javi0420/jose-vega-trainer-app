@@ -23,7 +23,8 @@ test.describe('Workout Editor - Bug Fixes', () => {
         await page.getByTestId(`routine-card-${routineName}`).click();
         await page.getByTestId('routine-btn-add-exercise').click();
         await page.getByTestId('routine-exercise-search').fill('Sentadilla');
-        await page.locator('button[data-exercise-name="Sentadilla"]').first().click();
+        await page.waitForSelector('ul li button');
+        await page.locator('ul li button').first().click();
         await expect(page.getByTestId('routine-exercise-search')).toBeHidden();
 
         // Ensure exercise is listed

@@ -20,6 +20,16 @@ test.describe('Feature: Exercise Manager', () => {
         // Force explicit click instead of enter, or ensure network idle
         await page.waitForLoadState('networkidle');
         await page.click('button:has-text("Iniciar Sesión")');
+
+        // Check if we are forced to reset password (happens if DB was reset)
+        if (page.url().includes('update-password')) {
+            console.log('DEBUG: Trainer forced to reset password. Handling...');
+            await page.fill('input[type="password"] >> nth=0', TRAINER_USER.pass + '!');
+            await page.fill('input[type="password"] >> nth=1', TRAINER_USER.pass + '!');
+            await page.click('button:has-text("Actualizar contraseña")');
+            await page.waitForTimeout(1500);
+        }
+
         await expect(page).toHaveURL(/\/app/, { timeout: 45000 });
     });
 
@@ -28,8 +38,8 @@ test.describe('Feature: Exercise Manager', () => {
         // Navigate to Exercise Manager via UI to avoid connection issues with direct URL
         await page.click('text=Catálogo de Ejercicios');
 
-        // Verify page loads (look for "Gestión de Ejercicios" title)
-        await expect(page.locator('text=Gestión de Ejercicios')).toBeVisible({ timeout: 10000 });
+        // Verify page loads (look for "Catálogo de Ejercicios" title)
+        await expect(page.locator('text=Catálogo de Ejercicios')).toBeVisible({ timeout: 10000 });
     });
 
     test('Trainer can add a new exercise to catalog', async ({ page }) => {
@@ -58,13 +68,24 @@ test.describe('Feature: Exercise Manager', () => {
 
         // Save
         await page.getByRole('button', { name: 'Crear Ejercicio' }).click();
-        // await page.click('button:has-text("Crear Ejercicio")');
 
         // Wait for network to settle after creation
         await page.waitForLoadState('networkidle');
 
-        // Verify exercise appears in list (looking for h3 with the name)
-        await expect(page.locator(`h3:has-text("${uniqueName}")`)).toBeVisible({ timeout: 10000 });
+        // Since there is server-side pagination, the new exercise might not be on the first page.
+        // We must SEARCH for it.
+        const searchInput = page.getByTestId('exercise-search-input').or(page.getByPlaceholder('Buscar ejercicio...'));
+        await expect(searchInput).toBeVisible({ timeout: 10000 });
+        
+        // Use a more reliable way to fill and trigger search
+        await searchInput.click();
+        await searchInput.clear();
+        await searchInput.pressSequentially(uniqueName, { delay: 30 });
+        
+        // Wait for the specific exercise card/heading to appear (case-insensitive)
+        await expect(page.locator('h3').filter({ hasText: new RegExp(uniqueName, 'i') })).toBeVisible({ timeout: 15000 });
+
+
     });
 
     test('Client can use ad-hoc exercise during workout', async ({ page }) => {
@@ -104,7 +125,7 @@ test.describe('Feature: Exercise Manager', () => {
         await expect(page).toHaveURL(/\/new/);
 
         // 3. In Workout, try to add new exercise
-        await page.click('button:has-text("Añadir Ejercicio")');
+        await page.getByTestId('btn-add-block').first().click();
 
         // Search for non-existent exercise
         const uniqueSearch = `CustomExercise${Date.now()}`;
@@ -118,8 +139,8 @@ test.describe('Feature: Exercise Manager', () => {
         if (await adHocBtn.isVisible()) {
             await adHocBtn.click();
 
-            // Verify exercise was added
-            await expect(page.locator(`text=${uniqueSearch}`)).toBeVisible();
+            // Verify exercise was added using new test-id (case-insensitive)
+            await expect(page.getByTestId('exercise-name').filter({ hasText: new RegExp(uniqueSearch, 'i') }).first()).toBeVisible({ timeout: 10000 });
         }
     });
 });

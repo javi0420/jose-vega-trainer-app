@@ -1,5 +1,6 @@
 import { Plus, Minus, Trash2, ClipboardList, Info, ArrowUp, ArrowDown } from 'lucide-react'
 import { clsx } from 'clsx'
+import { t } from '../utils/translations'
 
 export default function RoutineBlock({ block, blockIndex, isFirst, isLast, updateBlock, onMoveBlock, onAddExerciseToBlock, onRemoveExercise }) {
     // exercises array
@@ -61,7 +62,7 @@ export default function RoutineBlock({ block, blockIndex, isFirst, isLast, updat
                                         )}
                                     </h3>
                                     <span className="inline-block mt-1 w-fit rounded-lg bg-white/5 px-2 py-0.5 text-[9px] font-black text-gray-500 uppercase tracking-[0.15em] border border-white/5">
-                                        {exercise.muscle_group}
+                                        {t(exercise.muscle_group)}
                                     </span>
                                 </div>
                             </div>
