@@ -90,10 +90,9 @@ test.describe('Mobile Navigation (Bottom Tab Bar)', () => {
         // And BottomNav should be visible
         await expect(nav).toBeVisible();
 
-        // Check vertical stacking? 
-        // Hard to check CSS stacking in Playwright easily without bounding box math.
-        // But we can check they are both visible and don't block clicks.
-        await nav.getByRole('link', { name: 'Historial' }).click();
-        await expect(page).toHaveURL(/\/app\/history/);
+        // Check vertical stacking and ensure the X button works
+        await page.getByTitle('Descartar entrenamiento').click();
+        await page.getByRole('button', { name: 'Descartar' }).click();
+        await expect(activeBar).not.toBeVisible();
     });
 });

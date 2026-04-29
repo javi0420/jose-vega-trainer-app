@@ -7,6 +7,7 @@ import { useExercises } from '../hooks/useExercises';
 import { generateUUID } from '../utils/uuid';
 import RoutineBlock from '../components/RoutineBlock';
 import { useQueryClient } from '@tanstack/react-query';
+import ConfirmModal from '../components/ConfirmModal';
 
 import { normalizeText } from '../utils/text';
 import { t } from '../utils/translations';
@@ -28,11 +29,14 @@ export default function RoutineDetail() {
     const [blocks, setBlocks] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [isRedirecting, setIsRedirecting] = useState(false);
 
     // Modal State (resto)
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeBlockIdForSuperset, setActiveBlockIdForSuperset] = useState(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isDraftConfirmOpen, setIsDraftConfirmOpen] = useState(false);
+    const [pendingDraft, setPendingDraft] = useState(null);
 
     // Edit State
     const [editedName, setEditedName] = useState('');
@@ -53,18 +57,9 @@ export default function RoutineDetail() {
                 if (savedDraft) {
                     try {
                         const parsed = JSON.parse(savedDraft);
-                        if (window.confirm('Tienes cambios sin guardar en esta plantilla. ¿Deseas recuperarlos?')) {
-                            setEditedName(parsed.name);
-                            setEditedDescription(parsed.description);
-                            setEditedCategory(parsed.category);
-                            setEditedTags(parsed.tags);
-                            setBlocks(parsed.blocks);
-                            setIsLoading(false);
-                            setRoutine({ id, user_id: parsed.userId }); // Minimal routine stub for owner check
-                            return;
-                        } else {
-                            localStorage.removeItem(`routine_draft_${id}`);
-                        }
+                        setPendingDraft(parsed);
+                        setIsDraftConfirmOpen(true);
+                        return;
                     } catch (e) {
                         console.error("Error loading routine draft:", e);
                     }
@@ -154,7 +149,7 @@ export default function RoutineDetail() {
 
     // Save Draft and beforeunload guard
     useEffect(() => {
-        if (!isLoading && routine) {
+        if (!isLoading && routine && !isSaving && !isRedirecting) {
             const draft = {
                 name: editedName,
                 description: editedDescription,
@@ -246,9 +241,11 @@ export default function RoutineDetail() {
             queryClient.invalidateQueries(['routine_preview']);
 
             if (user?.id === routine?.user_id) {
+                setIsRedirecting(true);
                 localStorage.removeItem(`routine_draft_${id}`);
                 navigate('/app/routines');
             } else {
+                setIsRedirecting(true);
                 localStorage.removeItem(`routine_draft_${id}`);
                 navigate('/app', { state: { selectedClientId: routine.user_id } });
             }
@@ -648,6 +645,30 @@ export default function RoutineDetail() {
                     </div>
                 </div>
             )}
-        </div >
+            <ConfirmModal
+                isOpen={isDraftConfirmOpen}
+                onClose={() => {
+                    setIsDraftConfirmOpen(false);
+                    localStorage.removeItem(`routine_draft_${id}`);
+                    window.location.reload(); 
+                }}
+                onConfirm={() => {
+                    if (pendingDraft) {
+                        setEditedName(pendingDraft.name);
+                        setEditedDescription(pendingDraft.description);
+                        setEditedCategory(pendingDraft.category);
+                        setEditedTags(pendingDraft.tags);
+                        setBlocks(pendingDraft.blocks);
+                        setIsLoading(false);
+                        setRoutine({ id, user_id: pendingDraft.userId });
+                    }
+                    setIsDraftConfirmOpen(false);
+                }}
+                title="Cambios sin guardar"
+                message="Tienes cambios sin guardar en esta plantilla. ¿Deseas recuperarlos?"
+                confirmText="Recuperar"
+                cancelText="Descartar"
+            />
+        </div>
     );
 }

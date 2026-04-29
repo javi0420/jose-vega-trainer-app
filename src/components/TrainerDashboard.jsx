@@ -36,11 +36,12 @@ import ClientRow from './ClientRow'
 import { toast } from 'react-hot-toast'
 import { supabase } from '../lib/supabase'
 import { useMaintenance } from '../hooks/useMaintenance'
+import ConfirmModal from './ConfirmModal'
 
 
 // --- Sub-components ---
 
-function MaintenanceControl() {
+function MaintenanceControl({ setConfirmConfig }) {
     const { isActive, message, loading } = useMaintenance()
     const [localMessage, setLocalMessage] = useState('')
     const [isUpdating, setIsUpdating] = useState(false)
@@ -51,28 +52,34 @@ function MaintenanceControl() {
     }, [message])
 
     const toggleMaintenance = async () => {
-        // Solo pedir confirmación al ACTIVAR
-        if (!isActive) {
-            const confirmed = window.confirm(
-                '⚠️ ¿ACTIVAR MODO MANTENIMIENTO?\n\n' +
-                'Si confirmas, todos los clientes serán redirigidos a la pantalla de mantenimiento y NO podrán usar la app hasta que la desactives.\n\n' +
-                '¿Deseas continuar?'
-            );
-            if (!confirmed) return;
+        const executeToggle = async () => {
+            try {
+                setIsUpdating(true)
+                const { error } = await supabase.rpc('update_maintenance_settings', {
+                    p_active: !isActive
+                })
+
+                if (error) throw error
+                toast.success(`Modo mantenimiento ${!isActive ? 'ACTIVADO' : 'DESACTIVADO'}`)
+            } catch (err) {
+                toast.error('Error al actualizar: ' + err.message)
+            } finally {
+                setIsUpdating(false)
+            }
         }
 
-        try {
-            setIsUpdating(true)
-            const { error } = await supabase.rpc('update_maintenance_settings', {
-                p_active: !isActive
+        // Solo pedir confirmación al ACTIVAR
+        if (!isActive) {
+            setConfirmConfig({
+                isOpen: true,
+                title: '¿ACTIVAR MANTENIMIENTO?',
+                message: 'Todos los clientes serán redirigidos a la pantalla de mantenimiento y NO podrán usar la app hasta que la desactives.',
+                confirmText: 'Activar',
+                isDestructive: true,
+                onConfirm: executeToggle
             })
-
-            if (error) throw error
-            toast.success(`Modo mantenimiento ${!isActive ? 'ACTIVADO' : 'DESACTIVADO'}`)
-        } catch (err) {
-            toast.error('Error al actualizar: ' + err.message)
-        } finally {
-            setIsUpdating(false)
+        } else {
+            executeToggle()
         }
     }
 
@@ -230,6 +237,13 @@ export default function TrainerDashboard() {
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
     const [clientToAssign, setClientToAssign] = useState(null)
     const [hasPreSelected, setHasPreSelected] = useState(false)
+    const [confirmConfig, setConfirmConfig] = useState({ 
+        isOpen: false, 
+        title: '', 
+        message: '', 
+        onConfirm: () => {}, 
+        isDestructive: false 
+    })
 
     const handleGenerateMagicLink = async (client) => {
         if (!client?.id) {
@@ -331,21 +345,39 @@ export default function TrainerDashboard() {
 
     const handleDeleteClient = async (e, client) => {
         e.stopPropagation()
-        const confirmUnlink = window.confirm(`¿Quieres desvincular a ${client.full_name}? \n\n(Seguirá existiendo en la base de datos pero no aparecerá en tu lista)`)
-
-        if (confirmUnlink) {
-            const hardDelete = window.confirm(`¿Deseas ELIMINAR PERMANENTEMENTE a ${client.full_name} y toda su información de la base de datos? \n\nESTA ACCIÓN NO SE PUEDE DESHACER.`)
-
+        
+        const executeDelete = async (isHard) => {
             try {
-                if (hardDelete) {
+                if (isHard) {
                     await deleteClientPermanently.mutateAsync(client.id)
                 } else {
                     await unlinkClient.mutateAsync(client.id)
                 }
+                toast.success(`Cliente ${isHard ? 'eliminado' : 'desvinculado'} con éxito`)
             } catch (err) {
-                alert(err.message || 'Error al procesar la solicitud')
+                toast.error(err.message || 'Error al procesar la solicitud')
             }
         }
+
+        setConfirmConfig({
+            isOpen: true,
+            title: `¿Desvincular a ${client.full_name}?`,
+            message: 'El cliente seguirá existiendo en la base de datos pero no aparecerá en tu lista.',
+            confirmText: 'Desvincular',
+            isDestructive: false,
+            onConfirm: () => {
+                setConfirmConfig({
+                    isOpen: true,
+                    title: '¿ELIMINAR PERMANENTEMENTE?',
+                    message: `¿Deseas ELIMINAR PERMANENTEMENTE a ${client.full_name} y toda su información? ESTA ACCIÓN NO SE PUEDE DESHACER.`,
+                    confirmText: 'ELIMINAR TODO',
+                    cancelText: 'Solo Desvincular',
+                    isDestructive: true,
+                    onConfirm: () => executeDelete(true),
+                    onCancel: () => executeDelete(false)
+                })
+            }
+        })
     }
 
     const handleToggleStatus = async (client) => {
@@ -353,15 +385,22 @@ export default function TrainerDashboard() {
         const action = isCurrentlyActive ? 'DESACTIVAR' : 'ACTIVAR'
         const newStatus = !isCurrentlyActive
 
-        if (window.confirm(`¿Quieres ${action} a ${client.full_name}?`)) {
-            try {
-                await toggleClientStatus.mutateAsync({ id: client.id, isActive: newStatus })
-                toast.success(`Cliente ${newStatus ? 'activado' : 'desactivado'} con éxito`);
-            } catch (err) {
-                console.error('Error toggling status:', err)
-                toast.error(err.message || 'Error al cambiar estado')
+        setConfirmConfig({
+            isOpen: true,
+            title: `${action} Cliente`,
+            message: `¿Quieres ${action.toLowerCase()} el acceso a la aplicación para ${client.full_name}?`,
+            confirmText: action,
+            isDestructive: isCurrentlyActive,
+            onConfirm: async () => {
+                try {
+                    await toggleClientStatus.mutateAsync({ id: client.id, isActive: newStatus })
+                    toast.success(`Cliente ${newStatus ? 'activado' : 'desactivado'} con éxito`);
+                } catch (err) {
+                    console.error('Error toggling status:', err)
+                    toast.error(err.message || 'Error al cambiar estado')
+                }
             }
-        }
+        })
     }
 
     const handleOpenAssign = (e, client) => {
@@ -490,7 +529,7 @@ export default function TrainerDashboard() {
                     </button>
 
                     {/* Maintenance Control Widget */}
-                    <MaintenanceControl />
+                    <MaintenanceControl setConfirmConfig={setConfirmConfig} />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -728,6 +767,17 @@ export default function TrainerDashboard() {
                     onClose={() => setIsAssignModalOpen(false)}
                 />
             )}
+
+            <ConfirmModal
+                isOpen={confirmConfig.isOpen}
+                onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
+                onConfirm={confirmConfig.onConfirm}
+                title={confirmConfig.title}
+                message={confirmConfig.message}
+                confirmText={confirmConfig.confirmText}
+                cancelText={confirmConfig.cancelText}
+                isDestructive={confirmConfig.isDestructive}
+            />
         </div>
     )
 }

@@ -58,6 +58,19 @@ Estas migraciones deben ejecutarse en orden estricto para asegurar la estabilida
 
 ---
 
+# Tareas: Sprint v5.4 (UI Stability & Safety Out) [✓] Completado
+
+- [x] **Seguridad en Navegación y Estado**:
+    - [x] Implementar flag `isRedirecting` en `WorkoutEditor` y `RoutineDetail` para evitar guardados fantasmas al salir.
+    - [x] Corregir `ReferenceError` en inicialización de estado de redirección.
+- [x] **Mejora de UX Interactiva**:
+    - [x] Reemplazar todos los `window.confirm` nativos por el nuevo `ConfirmModal` (7+ componentes migrados).
+    - [x] Refactorizar `ConfirmModal` usando **React Portals** para evitar problemas de z-index (modal bajo el menú).
+    - [x] Asegurar `z-[9999]` en diálogos de confirmación críticos.
+- [x] **Estabilización de Flujos de Entrenador**:
+    - [x] Migrar confirmación de desvinculación y borrado permanente de clientes al nuevo sistema visual.
+    - [x] Integrar confirmación para la activación de Modo Mantenimiento.
+
 # Tareas: Sprint v5.3 (Maintenance & Data Integrity) [✓] Completado
 
 - [x] **Seguridad de Mantenimiento**:

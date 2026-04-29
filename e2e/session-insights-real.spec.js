@@ -87,6 +87,8 @@ test.describe('Session Insights E2E (Real Database)', () => {
         await expect(newNotesField).toHaveValue('');
 
         // Cleanup: Discard
-        await page.getByTitle('Descartar entrenamiento').or(page.locator('button:has-text("Cerrar")')).first().click();
+        await page.getByTitle('Descartar entrenamiento').first().click();
+        await page.getByRole('button', { name: 'Descartar' }).click();
+        await expect(page).toHaveURL(/\/app$/);
     });
 });

@@ -12,6 +12,7 @@ import LoadAssignedRoutineModal from '../components/LoadAssignedRoutineModal'
 import GlobalRestTimerModal from '../components/GlobalRestTimerModal'
 import ReplaceExerciseModal from '../components/ReplaceExerciseModal'
 import ReorderExercisesModal from '../components/ReorderExercisesModal'
+import ConfirmModal from '../components/ConfirmModal'
 import { generateUUID } from '../utils/uuid'
 import { normalizeText } from '../utils/text'
 import { t } from '../utils/translations'
@@ -20,6 +21,9 @@ import toast from 'react-hot-toast'
 
 export default function WorkoutEditor() {
     const { user } = useAuth()
+    const navigate = useNavigate()
+    const location = useLocation()
+
     // State for search must be defined BEFORE the hook use
     const [searchTerm, setSearchTerm] = useState('')
 
@@ -29,11 +33,9 @@ export default function WorkoutEditor() {
     const { startWorkout, discardWorkout, workoutDuration } = useActiveWorkout()
     const { startTimer, stopTimer, isActive } = useTimer()
 
-    const navigate = useNavigate()
-    const location = useLocation()
-
     // Local State
     const [isSaving, setIsSaving] = useState(false)
+    const [isRedirecting, setIsRedirecting] = useState(false)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
     const [isAssignedModalOpen, setIsAssignedModalOpen] = useState(false)
@@ -43,6 +45,10 @@ export default function WorkoutEditor() {
     const [activeBlockIdForSuperset, setActiveBlockIdForSuperset] = useState(null)
     const [replaceContext, setReplaceContext] = useState({ blockId: null, index: null })
     const [isEditingName, setIsEditingName] = useState(false)
+    const [isConfirmDiscardOpen, setIsConfirmDiscardOpen] = useState(false)
+    const [isConfirmLoadOpen, setIsConfirmLoadOpen] = useState(false)
+    const [isConfirmSaveNoSetsOpen, setIsConfirmSaveNoSetsOpen] = useState(false)
+    const [pendingTemplateId, setPendingTemplateId] = useState(null)
     const [tempWorkoutName, setTempWorkoutName] = useState('')
     const [workout, setWorkout] = useState({
         name: 'Entrenamiento de Tarde',
@@ -193,19 +199,26 @@ export default function WorkoutEditor() {
 
     // Save Draft on Change
     useEffect(() => {
-        if (workout.blocks.length > 0) {
+        if (workout.blocks.length > 0 && !isSaving && !isRedirecting) {
             localStorage.setItem('draft_workout', JSON.stringify(workout))
             startWorkout('draft')
         }
-    }, [workout, startWorkout])
+    }, [workout, startWorkout, isSaving, isRedirecting])
 
     // Handlers
     const handleDiscardWorkout = () => {
-        if (window.confirm('¿Estás seguro de que quieres descartar este entrenamiento? Se perderán todos los datos no guardados.')) {
-            stopTimer()
-            discardWorkout()
-            localStorage.removeItem('draft_workout')
-            navigate('/app', { replace: true })
+        setIsRedirecting(true)
+        stopTimer()
+        discardWorkout()
+        localStorage.removeItem('draft_workout')
+        navigate('/app', { replace: true })
+    }
+
+    const triggerDiscardConfirm = () => {
+        if (workout.blocks.length === 0) {
+            handleDiscardWorkout()
+        } else {
+            setIsConfirmDiscardOpen(true)
         }
     }
 
@@ -214,10 +227,14 @@ export default function WorkoutEditor() {
 
         // Confirm if there's existing data
         if (workout.blocks.length > 0) {
-            const confirmLoad = window.confirm('¿Cargar esta plantilla? Se reemplazarán los ejercicios actuales.')
-            if (!confirmLoad) return
+            setPendingTemplateId(routine)
+            setIsConfirmLoadOpen(true)
+        } else {
+            executeLoadTemplate(routine)
         }
+    }
 
+    const executeLoadTemplate = (routine) => {
         // Standardized data mapping:
         // Supports: routine_blocks -> routine_exercises -> exercises
         const sourceBlocks = routine.routine_blocks || routine.blocks || [];
@@ -272,6 +289,7 @@ export default function WorkoutEditor() {
 
         // Ensure timer is in active state if not already
         startWorkout('active');
+        setIsConfirmLoadOpen(false)
     }
 
     const handleSaveWorkout = async () => {
@@ -292,16 +310,26 @@ export default function WorkoutEditor() {
         )
 
         if (!hasCompletedSets) {
-            const confirmSave = window.confirm('No has marcado ninguna serie como completada. ¿Guardar de todos modos?')
-            if (!confirmSave) return
+            setIsConfirmSaveNoSetsOpen(true)
+            return
         }
 
+        executeSaveWorkout()
+    }
+
+    const executeSaveWorkout = async () => {
         setIsSaving(true)
+        setIsConfirmSaveNoSetsOpen(false)
 
         try {
             if (!user || !user.id) {
                 throw new Error('No hay sesión activa. Por favor, vuelve a iniciar sesión.')
             }
+
+            const validBlocks = workout.blocks.map(block => ({
+                ...block,
+                exercises: block.exercises.filter(ex => ex.name.trim() !== '')
+            })).filter(block => block.exercises.length > 0);
 
             // Construct payload for RPC
             console.log('DEBUG: Compiling workout payload...');
@@ -360,11 +388,10 @@ export default function WorkoutEditor() {
             if (error) throw error
 
             // Éxito
-            // Don't stop timer here, allow it to continue or stop explicitly if needed.
-            // Actually, we usually stop it on save.
             stopTimer()
             discardWorkout() // Clears context
             localStorage.removeItem('draft_workout')
+            setIsRedirecting(true)
 
             navigate(`/app/workout/${workoutId}`, { replace: true })
 
@@ -584,7 +611,7 @@ export default function WorkoutEditor() {
                     </button>
 
                     <button
-                        onClick={handleDiscardWorkout}
+                        onClick={triggerDiscardConfirm}
                         className="rounded-lg p-1.5 text-gray-400 hover:bg-red-500/10 hover:text-red-500 transition-colors"
                         title="Descartar entrenamiento"
                     >
@@ -891,6 +918,36 @@ export default function WorkoutEditor() {
                 onClose={() => setIsGlobalTimerModalOpen(false)}
                 onApply={handleApplyGlobalRest}
                 currentDefault={60}
+            />
+
+            <ConfirmModal
+                isOpen={isConfirmDiscardOpen}
+                onClose={() => setIsConfirmDiscardOpen(false)}
+                onConfirm={handleDiscardWorkout}
+                title="¿Descartar entrenamiento?"
+                message="Se perderán todos los datos que no hayas guardado. Esta acción no se puede deshacer."
+                confirmText="Descartar"
+                isDestructive={true}
+            />
+
+            <ConfirmModal
+                isOpen={isConfirmLoadOpen}
+                onClose={() => setIsConfirmLoadOpen(false)}
+                onConfirm={() => executeLoadTemplate(pendingTemplateId)}
+                title="¿Cargar plantilla?"
+                message="Se reemplazarán todos los ejercicios actuales por los de la plantilla."
+                confirmText="Cargar"
+                isDestructive={true}
+            />
+
+            <ConfirmModal
+                isOpen={isConfirmSaveNoSetsOpen}
+                onClose={() => setIsConfirmSaveNoSetsOpen(false)}
+                onConfirm={executeSaveWorkout}
+                title="¿Guardar sin completar?"
+                message="No has marcado ninguna serie como completada. ¿Deseas guardar el entrenamiento de todos modos?"
+                confirmText="Guardar"
+                isDestructive={false}
             />
         </div >
     )

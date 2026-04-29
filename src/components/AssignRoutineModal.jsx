@@ -7,6 +7,7 @@ import { useClientRoutinesV2 } from '../hooks/useClientRoutines'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import ExerciseDetailsModal from './ExerciseDetailsModal'
+import ConfirmModal from './ConfirmModal'
 
 export default function AssignRoutineModal({ client, onClose }) {
     const navigate = useNavigate()
@@ -26,9 +27,15 @@ export default function AssignRoutineModal({ client, onClose }) {
     const [selectedTemplateId, setSelectedTemplateId] = useState(null)
 
     const [assignmentNotes, setAssignmentNotes] = useState('')
-    const [isAssigning, setIsAssigning] = useState(false)
     const [isCreatingNew, setIsCreatingNew] = useState(false)
     const [newRoutineName, setNewRoutineName] = useState('Nueva Rutina')
+    const [confirmConfig, setConfirmConfig] = useState({ 
+        isOpen: false, 
+        title: '', 
+        message: '', 
+        onConfirm: () => {}, 
+        isDestructive: false 
+    })
 
     // Fetch already assigned routines (v3.5)
     const { data: assignedRoutineIds } = useQuery({
@@ -150,13 +157,18 @@ export default function AssignRoutineModal({ client, onClose }) {
                     console.log('Successfully auto-assigned routine:', assignData)
                 }
             }
- 
-            if (window.confirm('Rutina creada con éxito. ¿Ir a la edición?')) {
-                navigate(`/app/routines/${newRoutine.id}`)
-            } else {
-                setIsCreatingNew(false)
-                setNewRoutineName('Nueva Rutina')
-            }
+
+            setConfirmConfig({
+                isOpen: true,
+                title: 'Rutina creada',
+                message: 'La rutina se ha creado y asignado con éxito. ¿Deseas ir a editarla ahora?',
+                confirmText: 'Ir a editar',
+                cancelText: 'Cerrar',
+                onConfirm: () => navigate(`/app/routines/${newRoutine.id}`)
+            })
+            
+            setIsCreatingNew(false)
+            setNewRoutineName('Nueva Rutina')
         } catch (err) {
             console.error('Error creating routine:', err)
             alert('Error al crear: ' + err.message)
@@ -271,23 +283,28 @@ export default function AssignRoutineModal({ client, onClose }) {
                                                 <button
                                                     onClick={async (e) => {
                                                         e.stopPropagation();
-                                                        if (!window.confirm('¿Seguro que quieres desasignar esta rutina?')) return;
+                                                        setConfirmConfig({
+                                                            isOpen: true,
+                                                            title: '¿Desasignar rutina?',
+                                                            message: `¿Seguro que quieres quitar la rutina "${r.name}" de la lista de este cliente?`,
+                                                            confirmText: 'Desasignar',
+                                                            isDestructive: true,
+                                                            onConfirm: async () => {
+                                                                try {
+                                                                    const { error } = await supabase
+                                                                        .from('assigned_routines')
+                                                                        .delete()
+                                                                        .eq('id', r.assignment_id);
 
-                                                        try {
-                                                            const { error } = await supabase
-                                                                .from('assigned_routines')
-                                                                .delete()
-                                                                .eq('id', r.assignment_id);
-
-                                                            if (error) throw error;
-
-                                                            // Invalidate queries to refresh list
-                                                            queryClient.invalidateQueries(['routines', client?.id]);
-                                                            queryClient.invalidateQueries(['assigned_routines_check', client?.id]);
-                                                        } catch (err) {
-                                                            console.error(err);
-                                                            alert('Error al desasignar');
-                                                        }
+                                                                    if (error) throw error;
+                                                                    queryClient.invalidateQueries(['routines', client?.id]);
+                                                                    queryClient.invalidateQueries(['assigned_routines_check', client?.id]);
+                                                                } catch (err) {
+                                                                    console.error(err);
+                                                                    alert('Error al desasignar');
+                                                                }
+                                                            }
+                                                        });
                                                     }}
                                                     className="flex items-center gap-2 rounded-xl bg-red-500/10 px-3 py-2 text-[10px] font-black text-red-500 uppercase tracking-widest border border-transparent hover:border-red-500/50 hover:bg-red-500/20 transition-all active:scale-95"
                                                     title="Desasignar Rutina"
@@ -513,11 +530,21 @@ export default function AssignRoutineModal({ client, onClose }) {
                 </div>
 
                 {/* View Details Modal for Routine Preview */}
-                <ExerciseDetailsModal
-                    exercise={viewingExercise}
-                    onClose={() => setViewingExercise(null)}
-                />
-            </div>
+                exercise={viewingExercise}
+                onClose={() => setViewingExercise(null)}
+            />
+
+            <ConfirmModal
+                isOpen={confirmConfig.isOpen}
+                onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
+                onConfirm={confirmConfig.onConfirm}
+                title={confirmConfig.title}
+                message={confirmConfig.message}
+                confirmText={confirmConfig.confirmText}
+                cancelText={confirmConfig.cancelText}
+                isDestructive={confirmConfig.isDestructive}
+            />
+        </div>
 
             {/* Footer Deco */}
             <div className="h-1 w-full bg-gradient-to-r from-transparent via-gold-500/20 to-transparent" />

@@ -3,6 +3,8 @@ import { useActiveWorkout } from '../context/ActiveWorkoutContext'
 import { useAuth } from '../context/AuthContext'
 import { useTimer } from '../context/TimerContext'
 import { Play, X, Dumbbell, Clock } from 'lucide-react'
+import ConfirmModal from './ConfirmModal'
+import { useState } from 'react'
 
 export default function ActiveWorkoutBar() {
     const { activeWorkoutId, discardWorkout } = useActiveWorkout()
@@ -10,6 +12,7 @@ export default function ActiveWorkoutBar() {
     const navigate = useNavigate()
     const location = useLocation()
     const { user } = useAuth()
+    const [isConfirmOpen, setIsConfirmOpen] = useState(false)
 
     // Only show within the main app routes
     if (!user || !activeWorkoutId || !location.pathname.startsWith('/app') || location.pathname.includes('/workout/new')) return null
@@ -48,14 +51,23 @@ export default function ActiveWorkoutBar() {
                     <button
                         onClick={(e) => {
                             e.stopPropagation()
-                            if (window.confirm("¿Descartar este entrenamiento?")) {
-                                discardWorkout()
-                            }
+                            setIsConfirmOpen(true)
                         }}
                         className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+                        title="Descartar entrenamiento"
                     >
                         <X className="h-5 w-5" />
                     </button>
+
+                    <ConfirmModal
+                        isOpen={isConfirmOpen}
+                        onClose={() => setIsConfirmOpen(false)}
+                        onConfirm={discardWorkout}
+                        title="¿Descartar entrenamiento?"
+                        message="Se perderán todos los datos actuales de este entrenamiento."
+                        confirmText="Descartar"
+                        isDestructive={true}
+                    />
                 </div>
             </div>
         </div>

@@ -4,6 +4,7 @@ import { Plus, Search, Edit2, Trash2, X, Check, Dumbbell } from 'lucide-react'
 import { normalizeText } from '../utils/text'
 import { t } from '../utils/translations'
 import ExerciseDetailsModal from './ExerciseDetailsModal'
+import ConfirmModal from './ConfirmModal'
 
 export default function ExerciseCatalog() {
     const [searchTerm, setSearchTerm] = useState('')
@@ -11,6 +12,8 @@ export default function ExerciseCatalog() {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingExercise, setEditingExercise] = useState(null)
     const [viewingExercise, setViewingExercise] = useState(null)
+    const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false)
+    const [exerciseToDelete, setExerciseToDelete] = useState(null)
     const [form, setForm] = useState({ name: '', body_part: '' })
 
     // Client-side filtering removed in favor of Server-side
@@ -46,13 +49,19 @@ export default function ExerciseCatalog() {
         setIsModalOpen(true)
     }
 
-    const handleDelete = async (id) => {
-        if (window.confirm('¿Seguro que quieres eliminar este ejercicio?')) {
-            try {
-                await deleteExercise.mutateAsync(id)
-            } catch (err) {
-                alert(err.message)
-            }
+    const handleDelete = (id) => {
+        setExerciseToDelete(id)
+        setIsConfirmDeleteOpen(true)
+    }
+
+    const confirmDelete = async () => {
+        if (!exerciseToDelete) return
+        try {
+            await deleteExercise.mutateAsync(exerciseToDelete)
+        } catch (err) {
+            alert(err.message)
+        } finally {
+            setExerciseToDelete(null)
         }
     }
 
@@ -246,9 +255,18 @@ export default function ExerciseCatalog() {
             )}
 
             {/* View Details Modal */}
-            <ExerciseDetailsModal
                 exercise={viewingExercise}
                 onClose={() => setViewingExercise(null)}
+            />
+
+            <ConfirmModal
+                isOpen={isConfirmDeleteOpen}
+                onClose={() => setIsConfirmDeleteOpen(false)}
+                onConfirm={confirmDelete}
+                title="¿Eliminar ejercicio?"
+                message="Esta acción no se puede deshacer y el ejercicio desaparecerá de tu catálogo."
+                confirmText="Eliminar"
+                isDestructive={true}
             />
         </div>
     )
