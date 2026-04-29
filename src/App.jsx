@@ -175,12 +175,12 @@ function MaintenanceView() {
 function MaintenanceGuard() {
     const location = useLocation();
     const { user } = useAuth();
-    const { data: profile } = useUserRole();
+    const { data: profile, isLoading: isRoleLoading } = useUserRole();
     const { isActive, loading } = useMaintenance();
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (loading) return;
+        if (loading || (user && isRoleLoading)) return;
 
         if (!isActive) {
             if (location.pathname === '/maintenance') {
@@ -197,13 +197,17 @@ function MaintenanceGuard() {
             return;
         }
 
-        // Allow login/public pages
-        if (location.pathname === '/' || location.pathname === '/legal-terms' || location.pathname === '/maintenance') {
-            return;
-        }
+        // CRÍTICO: Añadir /update-password a la lista blanca
+        const isWhitelisted = [
+            '/', 
+            '/legal-terms', 
+            '/maintenance', 
+            '/update-password' 
+        ].includes(location.pathname);
 
-        // If we get here and it's active, redirect to maintenance
-        navigate('/maintenance', { replace: true });
+        if (!isWhitelisted) {
+            navigate('/maintenance', { replace: true });
+        }
     }, [isActive, loading, user, profile?.role, location.pathname, navigate]);
 
     return null;

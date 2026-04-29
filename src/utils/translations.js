@@ -71,7 +71,13 @@ const translations = {
     'rectus abdominis': 'recto abdominal',
     'bench': 'banco',
     'pull up bar': 'barra de dominadas',
-    'dip station': 'paralelas'
+    'dip station': 'paralelas',
+    'band': 'banda',
+    'bands': 'bandas',
+    'plates': 'discos',
+    'rack': 'rack',
+    'step': 'step',
+    'box': 'cajón'
 };
 
 /**

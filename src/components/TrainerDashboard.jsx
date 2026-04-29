@@ -63,10 +63,9 @@ function MaintenanceControl() {
 
         try {
             setIsUpdating(true)
-            const { error } = await supabase
-                .from('app_settings')
-                .update({ is_maintenance_mode: !isActive })
-                .eq('id', 1)
+            const { error } = await supabase.rpc('update_maintenance_settings', {
+                p_active: !isActive
+            })
 
             if (error) throw error
             toast.success(`Modo mantenimiento ${!isActive ? 'ACTIVADO' : 'DESACTIVADO'}`)
@@ -80,10 +79,9 @@ function MaintenanceControl() {
     const updateMessage = async () => {
         try {
             setIsUpdating(true)
-            const { error } = await supabase
-                .from('app_settings')
-                .update({ maintenance_message: localMessage })
-                .eq('id', 1)
+            const { error } = await supabase.rpc('update_maintenance_settings', {
+                p_message: localMessage
+            })
 
             if (error) throw error
             toast.success('Mensaje actualizado')
@@ -124,6 +122,8 @@ function MaintenanceControl() {
                 <button
                     onClick={toggleMaintenance}
                     disabled={isUpdating}
+                    data-testid="maintenance-toggle"
+                    aria-label={isActive ? 'Desactivar modo mantenimiento' : 'Activar modo mantenimiento'}
                     className={`
                         relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none
                         ${isActive ? 'bg-red-600' : 'bg-gray-700'}

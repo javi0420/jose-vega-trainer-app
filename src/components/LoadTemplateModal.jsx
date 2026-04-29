@@ -100,18 +100,19 @@ export default function LoadTemplateModal({ isOpen, onClose, onLoadTemplate }) {
     };
 
     const getRoutineSummary = (routine) => {
-        const totalBlocks = routine.routine_blocks?.length || 0
-        const totalExercises = routine.routine_blocks?.reduce((sum, block) => {
-            return sum + (block.routine_exercises?.length || 0)
-        }, 0) || 0
+        const blocks = routine.routine_blocks || routine.blocks || []
+        const totalBlocks = blocks.length
+        const totalExercises = blocks.reduce((sum, block) => {
+            return sum + (block.routine_exercises?.length || block.exercises?.length || 0)
+        }, 0)
 
-        const exercisesList = routine.routine_blocks
-            ?.flatMap(block => block.routine_exercises || [])
-            .filter(re => re.exercises?.name || re.custom_exercise_name)
+        const exercisesList = blocks
+            .flatMap(block => block.routine_exercises || block.exercises || [])
+            .filter(re => re.exercises?.name_es || re.exercises?.name || re.custom_exercise_name)
             .slice(0, 4)
 
         const exerciseNames = exercisesList
-            ?.map(re => re.exercises?.name || re.custom_exercise_name)
+            .map(re => re.exercises?.name_es || re.exercises?.name || re.custom_exercise_name)
             .join(', ') || 'Sin ejercicios'
 
         const exerciseThumbnails = exercisesList

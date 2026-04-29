@@ -62,7 +62,8 @@ export default function LoadAssignedRoutineModal({ isOpen, onClose, onLoadRoutin
                                 const routine = assignment.routine
                                 if (!routine) return null
 
-                                const exerciseCount = routine.blocks?.reduce((acc, b) => acc + (b.exercises?.length || 0), 0) || 0
+                                const blocks = routine.routine_blocks || routine.blocks || []
+                                const exerciseCount = blocks.reduce((acc, b) => acc + (b.routine_exercises?.length || b.exercises?.length || 0), 0)
 
                                 return (
                                     <button

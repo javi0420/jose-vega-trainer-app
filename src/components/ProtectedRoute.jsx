@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useActiveWorkout } from '../context/ActiveWorkoutContext'
 import { useUserRole } from '../hooks/useUserRole'
@@ -7,7 +7,8 @@ import { Loader2 } from 'lucide-react'
 export default function ProtectedRoute({ allowedRoles }) {
     const { user, loading: authLoading } = useAuth()
     const { activeWorkoutId } = useActiveWorkout()
-    const { data: profile, isLoading: roleLoading } = useUserRole()
+    const { data: profile, isLoading: roleLoading, isError } = useUserRole()
+    const location = useLocation()
 
     if (authLoading || (user && roleLoading)) {
         return (
@@ -18,22 +19,21 @@ export default function ProtectedRoute({ allowedRoles }) {
     }
 
     if (!user && !activeWorkoutId) {
-        return <Navigate to="/" replace />
+        return <Navigate to="/" replace state={{ from: location }} />
     }
 
-    // Force Password Change Check
-    if (profile?.requires_password_change && window.location.pathname !== '/update-password') {
+    // Salvaguarda: Si hay error de red cargando el perfil, no forzar redirecciones sensibles
+    if (user && isError) return <Outlet />
+
+    if (profile?.requires_password_change && location.pathname !== '/update-password') {
         return <Navigate to="/update-password" replace />
     }
 
-    // Bloqueo inverso: Si NO necesita cambiar clave y entra a la ruta de cambio
-    if (!profile?.requires_password_change && window.location.pathname === '/update-password') {
+    if (!profile?.requires_password_change && location.pathname === '/update-password') {
         return <Navigate to="/app" replace />
     }
 
-    // Role Check
     if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
-        // User not authorized for this route
         return <Navigate to="/app" replace />
     }
 

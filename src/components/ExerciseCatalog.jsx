@@ -39,7 +39,10 @@ export default function ExerciseCatalog() {
 
     const handleEdit = (ex) => {
         setEditingExercise(ex)
-        setForm({ name: ex.name, body_part: ex.body_part || ex.muscle_group || '' })
+        setForm({ 
+            name: ex.name_es || ex.name, 
+            body_part: ex.body_part || ex.muscle_group || '' 
+        })
         setIsModalOpen(true)
     }
 
@@ -127,7 +130,7 @@ export default function ExerciseCatalog() {
                                     </p>
                                     {ex.equipment && (
                                         <p className="text-xs text-gray-500 capitalize truncate">
-                                            Eq: {t(ex.equipment.replace('_', ' '))}
+                                            Eq: {t(ex.equipment.replace(/_/g, ' '))}
                                         </p>
                                     )}
                                     {ex.created_by && (
@@ -211,10 +214,13 @@ export default function ExerciseCatalog() {
                                     <option value="espalda">Espalda</option>
                                     <option value="piernas">Piernas</option>
                                     <option value="hombros">Hombros</option>
-                                    <option value="Bíceps">Bíceps</option>
-                                    <option value="Tríceps">Tríceps</option>
-                                    <option value="core">Core</option>
+                                    <option value="bíceps">Bíceps</option>
+                                    <option value="tríceps">Tríceps</option>
+                                    <option value="antebrazos">Antebrazos</option>
+                                    <option value="abdominales">Abdominales</option>
+                                    <option value="gemelos">Gemelos</option>
                                     <option value="cardio">Cardio</option>
+                                    <option value="cuello">Cuello</option>
                                 </select>
                             </div>
                             <div className="pt-2 flex gap-3">

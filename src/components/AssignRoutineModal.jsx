@@ -425,7 +425,7 @@ export default function AssignRoutineModal({ client, onClose }) {
                                                                                             <div className="w-8 h-8 rounded shrink-0 overflow-hidden bg-gold-500">
                                                                                                 <img
                                                                                                     src={exerciseData.gif_url}
-                                                                                                    alt={exerciseData.name}
+                                                                                                    alt={exerciseData?.name_es || exerciseData?.name}
                                                                                                     className="w-full h-full object-cover"
                                                                                                     style={{ mixBlendMode: 'multiply', filter: 'grayscale(100%) contrast(1.1)' }}
                                                                                                     loading="lazy"
@@ -438,7 +438,7 @@ export default function AssignRoutineModal({ client, onClose }) {
                                                                                         )}
                                                                                         <div className="flex flex-col min-w-0">
                                                                                             <span className="text-[10px] text-gray-300 font-bold truncate uppercase leading-none">
-                                                                                                {exerciseData.name || ex.custom_exercise_name || 'Ejercicio'}
+                                                                                                {exerciseData?.name_es || exerciseData?.name || ex.custom_exercise_name || 'Ejercicio'}
                                                                                             </span>
                                                                                             {exerciseData.target_muscle && (
                                                                                                 <span className="text-[8px] text-gray-500 capitalize mt-0.5 truncate">

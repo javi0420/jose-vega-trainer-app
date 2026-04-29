@@ -28,7 +28,7 @@ export function useAssignedRoutines() {
             description,
             category,
             tags,
-            blocks:routine_blocks (
+            routine_blocks (
               id,
               order_index,
               routine_exercises (
@@ -41,7 +41,14 @@ export function useAssignedRoutines() {
                 default_reps,
                 exercises (
                   id,
-                  name
+                  name,
+                  name_es,
+                  gif_url,
+                  target_muscle,
+                  body_part,
+                  equipment,
+                  instructions,
+                  instructions_es
                 )
               )
             )

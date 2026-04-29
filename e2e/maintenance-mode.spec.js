@@ -91,31 +91,32 @@ test.describe('Maintenance Mode Flow', () => {
         // We'll wait for the text "Modo Mantenimiento" to appear
         await expect(page.locator('text=Modo Mantenimiento')).toBeVisible({ timeout: 15000 });
 
-        // 3. Toggle ON from UI
-        // In the UI we have: <button role="switch" ...>
-        const toggle = page.locator('button').filter({ hasText: '' }).last(); // Usually the switch if it's the last button in that section
-        // Better: use the role if available, or class.
-        // Let's use a more specific locator based on the component structure
         // 3. Toggle ON from UI (Handling confirmation dialog)
-        page.once('dialog', dialog => {
-            console.log(`Dialog message: ${dialog.message()}`);
-            dialog.accept();
+        page.once('dialog', async dialog => {
+            console.log(`Handling dialog: ${dialog.message()}`);
+            await dialog.accept();
         });
 
-        const switchBtn = page.locator('button:has(span.translate-x-1), button:has(span.translate-x-6)');
-        await switchBtn.click();
+        const toggle = page.getByTestId('maintenance-toggle');
+        await toggle.click();
         
-        // 4. Verify in DB via Supabase
+        // 4. Verify in DB via Supabase FIRST (to ensure RPC worked)
         await expect.poll(async () => {
             const { data } = await supabase.from('app_settings').select('is_maintenance_mode').eq('id', 1).single();
             return data.is_maintenance_mode;
-        }, { timeout: 10000 }).toBe(true);
+        }, { timeout: 10000, message: 'Database should update after toggle' }).toBe(true);
 
-        // 5. Toggle OFF and verify
-        await switchBtn.click();
+        // 5. Verify UI state change (Auto-retries) - Use regex for case insensitivity
+        await expect(page.getByText(/Sistema Bloqueado/i)).toBeVisible({ timeout: 10000 });
+
+        // 6. Toggle OFF and verify
+        await toggle.click();
+        
         await expect.poll(async () => {
             const { data } = await supabase.from('app_settings').select('is_maintenance_mode').eq('id', 1).single();
             return data.is_maintenance_mode;
-        }, { timeout: 10000 }).toBe(false);
+        }, { timeout: 10000, message: 'Database should reset after toggle' }).toBe(false);
+
+        await expect(page.getByText(/Operativo/i)).toBeVisible({ timeout: 10000 });
     });
 });

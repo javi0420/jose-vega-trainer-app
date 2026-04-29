@@ -46,7 +46,7 @@ export default function WorkoutDetail() {
                         *,
                         block_exercises (
                             *,
-                            exercises (id, name, name_es, target_muscle, gif_url),
+                            exercises (id, name, name_es, target_muscle, body_part, equipment, gif_url, instructions, instructions_es),
                             sets (*)
                         )
                     )
@@ -265,7 +265,7 @@ export default function WorkoutDetail() {
                                         onChange={(e) => setSelectedChartExerciseId(e.target.value)}
                                     >
                                         {allExercises.map((be, idx) => (
-                                            <option key={idx} value={be.exercises?.id}>{be.exercises?.name}</option>
+                                            <option key={idx} value={be.exercises?.id}>{be.exercises?.name_es || be.exercises?.name}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -292,7 +292,10 @@ export default function WorkoutDetail() {
                         allExercises.map((exerciseData, index) => (
                             <ExerciseSummaryCard
                                 key={`${exerciseData.id}-${index}`}
-                                exercise={exerciseData.exercises || { name: exerciseData.custom_exercise_name, muscle_group: 'General' }}
+                                exercise={{
+                                    ...(exerciseData.exercises || { name: exerciseData.custom_exercise_name, muscle_group: 'General' }),
+                                    target_rest_time: exerciseData.target_rest_time
+                                }}
                                 sets={exerciseData.sets || []}
                                 notes={exerciseData.notes}
                             />

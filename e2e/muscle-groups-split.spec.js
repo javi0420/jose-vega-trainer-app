@@ -27,10 +27,10 @@ test.describe('Muscle Groups: Brazos Split (Bíceps/Tríceps)', () => {
         const muscleGroupSelect = page.locator('select').filter({ hasText: 'Seleccionar...' });
 
         // Verify "Bíceps" option exists (options are hidden by default in select)
-        await expect(muscleGroupSelect.locator('option[value="Bíceps"]')).toHaveCount(1);
+        await expect(muscleGroupSelect.locator('option[value="bíceps"]')).toHaveCount(1);
 
         // Verify "Tríceps" option exists
-        await expect(muscleGroupSelect.locator('option[value="Tríceps"]')).toHaveCount(1);
+        await expect(muscleGroupSelect.locator('option[value="tríceps"]')).toHaveCount(1);
 
         // Verify "Brazos" option does NOT exist
         await expect(muscleGroupSelect.locator('option[value="brazos"]')).toHaveCount(0);
@@ -91,7 +91,7 @@ test.describe('Muscle Groups: Brazos Split (Bíceps/Tríceps)', () => {
         const exerciseName = `Curl Test ${timestamp}`;
 
         await page.fill('input[placeholder*="Press de Banca"]', exerciseName);
-        await page.selectOption('select', 'Bíceps');
+        await page.selectOption('select', 'bíceps');
 
         // Submit
         await page.click('button:has-text("Crear Ejercicio")');

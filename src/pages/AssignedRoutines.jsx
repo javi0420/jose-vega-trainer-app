@@ -84,11 +84,14 @@ export default function AssignedRoutines() {
         }
     }
 
-    const getExerciseCount = (routine) => {
-        if (!routine?.blocks) return 0
-        return routine.blocks.reduce((total, block) => {
-            return total + (block.exercises?.length || 0)
+    const getExerciseCount = (routineData) => {
+        const routine = Array.isArray(routineData) ? routineData[0] : routineData
+        const blocks = routine?.routine_blocks || routine?.blocks || []
+        const total = blocks.reduce((total, block) => {
+            const exercises = block.routine_exercises || block.exercises || []
+            return total + (Array.isArray(exercises) ? exercises.length : 0)
         }, 0)
+        return total
     }
 
     const handleStartWorkout = (routine) => {
@@ -130,9 +133,10 @@ export default function AssignedRoutines() {
                 ) : Array.isArray(assignments) && assignments.length > 0 ? (
                     <div className="space-y-4 mt-2">
                         {assignments.map(assignment => {
-                            const routine = assignment.routine
+                            const rawRoutine = assignment.routine
+                            const routine = Array.isArray(rawRoutine) ? rawRoutine[0] : rawRoutine
                             if (!routine) return null // Skip invalid assignments
-
+                            
                             const exerciseCount = getExerciseCount(routine)
                             const isNew = !assignment.viewed_at
 

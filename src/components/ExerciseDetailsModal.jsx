@@ -54,13 +54,16 @@ export default function ExerciseDetailsModal({ exercise, onClose }) {
                         )}
                     </div>
 
-                    {exercise.instructions && exercise.instructions.length > 0 && (
+                    {( (exercise.instructions && exercise.instructions.length > 0) || (exercise.instructions_es && exercise.instructions_es.length > 0) ) && (
                         <div className="space-y-3">
                             <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest border-b border-gray-800 pb-2 mb-3">
                                 Instrucciones
                             </h3>
                             <ol className="list-decimal list-outside ml-4 space-y-3 text-gray-300 text-sm leading-relaxed">
-                                {(exercise.instructions_es && exercise.instructions_es.length > 0 ? exercise.instructions_es : exercise.instructions).map((step, idx) => (
+                                {(exercise.instructions_es && exercise.instructions_es.length > 0 
+                                    ? exercise.instructions_es 
+                                    : (exercise.instructions || [])
+                                ).map((step, idx) => (
                                     <li key={idx} className="pl-2 marker:text-gold-500 marker:font-bold">
                                         {step}
                                     </li>
