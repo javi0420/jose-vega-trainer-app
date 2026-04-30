@@ -54,7 +54,7 @@ export default function RoutineBlock({ block, blockIndex, isFirst, isLast, updat
                                 )}
                                 <div className="flex flex-col">
                                     <h3 className="font-black text-xl text-white leading-tight tracking-tight uppercase">
-                                        {exercise.name}
+                                        {exercise.name_es || exercise.name}
                                         {exercise.is_active === false && (
                                             <span className="ml-2 inline-block rounded bg-red-500/10 px-2 py-0.5 text-[9px] font-black text-red-500 border border-red-500/20 uppercase tracking-tighter">
                                                 Archivado

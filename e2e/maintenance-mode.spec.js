@@ -91,14 +91,16 @@ test.describe('Maintenance Mode Flow', () => {
         // We'll wait for the text "Modo Mantenimiento" to appear
         await expect(page.locator('text=Modo Mantenimiento')).toBeVisible({ timeout: 15000 });
 
-        // 3. Toggle ON from UI (Handling confirmation dialog)
-        page.once('dialog', async dialog => {
-            console.log(`Handling dialog: ${dialog.message()}`);
-            await dialog.accept();
-        });
-
+        // 3. Toggle ON from UI
+        // NOTE: The toggle opens a custom ConfirmModal (React portal), NOT a native browser dialog.
+        // page.once('dialog', ...) does NOT work here.
         const toggle = page.getByTestId('maintenance-toggle');
         await toggle.click();
+
+        // Handle the ConfirmModal by clicking the "Activar" button
+        const activarBtn = page.locator('button:has-text("Activar")');
+        await expect(activarBtn).toBeVisible({ timeout: 5000 });
+        await activarBtn.click();
         
         // 4. Verify in DB via Supabase FIRST (to ensure RPC worked)
         await expect.poll(async () => {
@@ -111,6 +113,11 @@ test.describe('Maintenance Mode Flow', () => {
 
         // 6. Toggle OFF and verify
         await toggle.click();
+        // Handle the ConfirmModal for deactivation if present
+        const desactivarBtn = page.locator('button:has-text("Desactivar")');
+        if (await desactivarBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await desactivarBtn.click();
+        }
         
         await expect.poll(async () => {
             const { data } = await supabase.from('app_settings').select('is_maintenance_mode').eq('id', 1).single();

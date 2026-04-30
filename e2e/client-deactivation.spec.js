@@ -116,7 +116,8 @@ test.describe('Client Deactivation Flow', () => {
         await cardToDeact.getByTestId('actions-trigger').click({ force: true });
         // Update TestID: action-toggle-status -> action-deactivate
         await page.getByTestId('action-deactivate').click({ force: true });
-        await page.waitForTimeout(3000);
+        await page.click('button:has-text("DESACTIVAR")');
+        await page.waitForTimeout(1000);
         await expect(cardToDeact).toHaveClass(/opacity-50/);
 
         // 5. BLOQUEO
@@ -137,7 +138,8 @@ test.describe('Client Deactivation Flow', () => {
         await cardReact.getByTestId('actions-trigger').click({ force: true });
         // Update TestID: action-toggle-status -> action-deactivate
         await page.getByTestId('action-deactivate').click({ force: true });
-        await page.waitForTimeout(3000);
+        await page.click('button:has-text("ACTIVAR")');
+        await page.waitForTimeout(1000);
         await expect(cardReact).not.toHaveClass(/opacity-50/);
 
         // 7. ENTRAR DE NUEVO

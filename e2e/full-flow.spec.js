@@ -160,19 +160,13 @@ test.describe('Authenticated User Flows', () => {
         await expect(page.getByTestId('exercise-name').filter({ hasText: /Press de Banca/i }).first()).toBeVisible({ timeout: 15000 });
 
 
-        // --- 4. FINISH WORKOUT ---
-        // Click Finalizar
-        await page.locator('button:has-text("Finalizar")').click();
-
-        // Handle Confirm Dialog (if any) or validation
-        // Our previous code added validation: "Must have 1 completed set".
-        // Let's complete a set first!
-
-        // 5. COMPLETE SET
-        // Ensure at least one set exists.
-        if (await page.getByTestId('workout-btn-add-set').first().isVisible()) {
-            await page.getByTestId('workout-btn-add-set').first().click();
-        }
+        // --- 4. COMPLETE SET FIRST, then FINISH ---
+        // IMPORTANT: We must complete a set BEFORE clicking Finalizar.
+        // Otherwise, a ConfirmModal portal appears and intercepts all pointer events,
+        // making it impossible to click workout elements like 'workout-btn-add-set'.
+        const addSetBtn = page.getByTestId('workout-btn-add-set').first();
+        await expect(addSetBtn).toBeVisible({ timeout: 15000 });
+        await addSetBtn.click();
 
         // Wait for inputs and fill data
         const weightInput = page.getByTestId('workout-input-weight').first();
@@ -186,6 +180,7 @@ test.describe('Authenticated User Flows', () => {
         // Small wait to ensure state update
         await page.waitForTimeout(500);
 
+        // --- 5. FINISH WORKOUT ---
         // Click Finalizar and wait for response
         await Promise.all([
             page.waitForResponse(resp =>
@@ -198,10 +193,6 @@ test.describe('Authenticated User Flows', () => {
         // Should redirect to summary or home
         // We mocked the POST response so it should succeed.
         await expect(page).toHaveURL(/\/app\/workout\/new-workout-id/);
-
-        // Verify success alert or element?
-        // Alert is handled by window.alert. Playwright auto-dismisses alerts but we can catch them.
-        page.on('dialog', dialog => dialog.accept());
     });
 
 });

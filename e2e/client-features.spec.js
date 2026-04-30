@@ -56,11 +56,14 @@ test.describe('Client New Features (Magic Link & Deactivation)', () => {
         // Open menu
         await clientRow.getByTestId('actions-trigger').click({ force: true });
 
-        // Confirm dialog and click Deactivate
-        page.once('dialog', dialog => dialog.accept());
+        // Click Deactivate
         const deactivateBtn = page.getByTestId('action-deactivate');
         await expect(deactivateBtn).toBeVisible({ timeout: 5000 });
         await deactivateBtn.click({ force: true });
+
+        // Handle custom ConfirmModal
+        await page.click('button:has-text("DESACTIVAR")');
+        await page.waitForTimeout(1000);
 
         // Verify visual feedback via data attribute and class
         await expect(clientRow).toHaveAttribute('data-active', 'false');

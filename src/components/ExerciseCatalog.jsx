@@ -254,7 +254,7 @@ export default function ExerciseCatalog() {
                 </div>
             )}
 
-            {/* View Details Modal */}
+            <ExerciseDetailsModal
                 exercise={viewingExercise}
                 onClose={() => setViewingExercise(null)}
             />

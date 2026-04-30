@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { X, Search, Loader2, List, PlusCircle, CheckCircle2, Plus, ChevronRight, Settings, Dumbbell, FileText, MessageSquare } from 'lucide-react'
+import { X, FileText, Dumbbell, Loader2, ChevronRight, User, Briefcase, Plus, MessageSquare, Settings, CheckCircle2, PlusCircle, List, Search } from 'lucide-react'
 import { useRoutines } from '../hooks/useRoutines'
 import { useClientRoutinesV2 } from '../hooks/useClientRoutines'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import ExerciseDetailsModal from './ExerciseDetailsModal'
 import ConfirmModal from './ConfirmModal'
+import { t } from '../utils/translations'
 
 export default function AssignRoutineModal({ client, onClose }) {
     const navigate = useNavigate()
     const queryClient = useQueryClient()
-    const { user } = useAuth() // Usar contexto en lugar de getUser()
+    const { user } = useAuth() 
     const { data: templates, isLoading: isLoadingTemplates } = useRoutines()
     const {
         routines: clientRoutines,
@@ -21,6 +23,7 @@ export default function AssignRoutineModal({ client, onClose }) {
     } = useClientRoutinesV2(client?.id)
 
     const [viewingExercise, setViewingExercise] = useState(null)
+    const [isAssigning, setIsAssigning] = useState(false)
 
 
     const [searchTerm, setSearchTerm] = useState('')
@@ -37,7 +40,7 @@ export default function AssignRoutineModal({ client, onClose }) {
         isDestructive: false 
     })
 
-    // Fetch already assigned routines (v3.5)
+    // Fetch already assigned routines
     const { data: assignedRoutineIds } = useQuery({
         queryKey: ['assigned_routines_check', client?.id],
         queryFn: async () => {
@@ -96,11 +99,9 @@ export default function AssignRoutineModal({ client, onClose }) {
 
         setIsAssigning(true)
         try {
-            // Usar user del contexto en lugar de getUser() para evitar 403
             if (!user) throw new Error('No autenticado')
 
-            // Insert into assigned_routines table
-            const { data: assignment, error } = await supabase
+            const { error } = await supabase
                 .from('assigned_routines')
                 .insert({
                     routine_id: templateId,
@@ -108,16 +109,14 @@ export default function AssignRoutineModal({ client, onClose }) {
                     assigned_by: user.id,
                     assignment_notes: assignmentNotes.trim() || null
                 })
-                .select()
-                .single()
 
             if (error) throw error
 
             alert('✅ Rutina asignada exitosamente al cliente')
             queryClient.invalidateQueries(['assigned_routines_check', client?.id])
-            queryClient.invalidateQueries(['routines', client?.id]) // Refresh routines list
-            setAssignmentNotes('') // Reset notes
-            setSelectedTemplateId(null) // Clear selection
+            queryClient.invalidateQueries(['routines', client?.id]) 
+            setAssignmentNotes('') 
+            setSelectedTemplateId(null) 
             onClose()
         } catch (err) {
             console.error('Error al asignar:', err)
@@ -135,26 +134,20 @@ export default function AssignRoutineModal({ client, onClose }) {
  
         try {
             const newRoutine = await createEmptyRoutine.mutateAsync({ name: newRoutineName })
-            console.log('Created routine:', newRoutine.id)
  
-            // Auto-assign the new routine to the client so it appears in their list
             const { data: userData } = await supabase.auth.getUser()
             if (userData.user && client?.id) {
-                console.log('Auto-assigning routine to client:', client.id)
-                const { data: assignData, error: assignError } = await supabase
+                const { error: assignError } = await supabase
                     .from('assigned_routines')
                     .insert({
                         routine_id: newRoutine.id,
                         client_id: client.id,
                         assigned_by: userData.user.id
                     })
-                    .select()
  
                 if (assignError) {
                     console.error('Error auto-assigning created routine:', assignError)
                     alert(`⚠️ Rutina creada pero no se pudo asignar automáticamente: ${assignError.message}`)
-                } else {
-                    console.log('Successfully auto-assigned routine:', assignData)
                 }
             }
 
@@ -175,7 +168,7 @@ export default function AssignRoutineModal({ client, onClose }) {
         }
     }
 
-    return (
+    const modalContent = (
         <div className="fixed inset-0 z-[100] w-full h-full flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300" data-testid="assign-routine-modal">
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg rounded-[2.5rem] border border-gray-800 bg-gray-900 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] shadow-gold-500/10">
 
@@ -362,58 +355,58 @@ export default function AssignRoutineModal({ client, onClose }) {
                                     <p className="text-[10px] font-black text-gray-500 tracking-widest uppercase">Cargando...</p>
                                 </div>
                             ) : filteredTemplates?.length > 0 ? (
-                                filteredTemplates.map(t => (
+                                filteredTemplates.map(template => (
                                     <div
-                                        key={t.id}
-                                        data-testid={`routine-template-${t.name}`}
-                                        className={`relative overflow-hidden transition-all duration-300 rounded-[1.5rem] border ${selectedTemplateId === t.id
+                                        key={template.id}
+                                        data-testid={`routine-template-${template.name}`}
+                                        className={`relative overflow-hidden transition-all duration-300 rounded-[1.5rem] border ${selectedTemplateId === template.id
                                             ? 'bg-gray-800 border-gold-500 ring-1 ring-gold-500/50 shadow-lg shadow-gold-500/10'
                                             : 'bg-gray-900 border-gray-800 hover:border-gold-500/40 hover:bg-gray-800/50'
                                             }`}
                                     >
                                         <button
-                                            onClick={() => setSelectedTemplateId(selectedTemplateId === t.id ? null : t.id)}
+                                            onClick={() => setSelectedTemplateId(selectedTemplateId === template.id ? null : template.id)}
                                             className="w-full flex items-center gap-4 p-4 text-left relative z-10"
                                         >
-                                            <div className={`h-12 w-12 flex items-center justify-center rounded-2xl transition-colors duration-300 ${selectedTemplateId === t.id ? 'bg-gold-500 text-black' : 'bg-gold-500/10 text-gold-500'
+                                            <div className={`h-12 w-12 flex items-center justify-center rounded-2xl transition-colors duration-300 ${selectedTemplateId === template.id ? 'bg-gold-500 text-black' : 'bg-gold-500/10 text-gold-500'
                                                 }`}>
                                                 <List className="h-6 w-6" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <h4 className={`text-sm font-bold transition-colors truncate uppercase tracking-tight ${selectedTemplateId === t.id ? 'text-white' : 'text-white group-hover:text-gold-500'
-                                                    }`}>{t.name}</h4>
+                                                <h4 className={`text-sm font-bold transition-colors truncate uppercase tracking-tight ${selectedTemplateId === template.id ? 'text-white' : 'text-white group-hover:text-gold-500'
+                                                    }`}>{template.name}</h4>
                                                 <p className="text-[10px] text-gray-500 font-medium truncate uppercase tracking-tighter font-mono mb-1.5">
-                                                    {t.description || 'Sin descripción detallada'}
+                                                    {template.description || 'Sin descripción detallada'}
                                                 </p>
-                                                {(t.category || (t.tags && t.tags.length > 0)) && (
+                                                {(template.category || (template.tags && template.tags.length > 0)) && (
                                                     <div className="flex flex-wrap gap-1.5 opacity-90">
-                                                        {t.category && (
+                                                        {template.category && (
                                                             <span className="text-[9px] font-black uppercase tracking-wider text-black bg-gold-500 px-1.5 py-0.5 rounded">
-                                                                {t.category}
+                                                                {template.category}
                                                             </span>
                                                         )}
-                                                        {t.tags && t.tags.slice(0, 3).map(tag => (
+                                                        {template.tags && template.tags.slice(0, 3).map(tag => (
                                                             <span key={tag} className="text-[9px] font-mono text-gray-400 bg-gray-800 border border-gray-700 px-1.5 py-0.5 rounded">
                                                                 #{tag}
                                                             </span>
                                                         ))}
-                                                        {t.tags && t.tags.length > 3 && (
-                                                            <span className="text-[9px] text-gray-500 px-1 py-0.5">+{t.tags.length - 3}</span>
+                                                        {template.tags && template.tags.length > 3 && (
+                                                            <span className="text-[9px] text-gray-500 px-1 py-0.5">+{template.tags.length - 3}</span>
                                                         )}
                                                     </div>
                                                 )}
                                             </div>
 
-                                            <div className={`flex items-center justify-center h-8 w-8 rounded-full transition-all ${selectedTemplateId === t.id ? 'bg-gold-500 text-black' : 'bg-gray-800 text-gray-600'
+                                            <div className={`flex items-center justify-center h-8 w-8 rounded-full transition-all ${selectedTemplateId === template.id ? 'bg-gold-500 text-black' : 'bg-gray-800 text-gray-600'
                                                 }`}>
-                                                {selectedTemplateId === t.id ? <CheckCircle2 className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                                {selectedTemplateId === template.id ? <CheckCircle2 className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                             </div>
                                         </button>
 
                                         {/* Expanded Action Area */}
                                         <div className={`
                                             overflow-hidden transition-all duration-300 ease-in-out bg-gray-950/50
-                                            ${selectedTemplateId === t.id ? 'max-h-[500px] opacity-100 border-t border-gray-700' : 'max-h-0 opacity-0'}
+                                            ${selectedTemplateId === template.id ? 'max-h-[500px] opacity-100 border-t border-gray-700' : 'max-h-0 opacity-0'}
                                         `}>
                                             <div className="p-4 space-y-4">
                                                 {/* Preview Section */}
@@ -459,7 +452,7 @@ export default function AssignRoutineModal({ client, onClose }) {
                                                                                             </span>
                                                                                             {exerciseData.target_muscle && (
                                                                                                 <span className="text-[8px] text-gray-500 capitalize mt-0.5 truncate">
-                                                                                                    {exerciseData.target_muscle}
+                                                                                                    {t(exerciseData.target_muscle)}
                                                                                                 </span>
                                                                                             )}
                                                                                         </div>
@@ -493,16 +486,16 @@ export default function AssignRoutineModal({ client, onClose }) {
                                                 </div>
 
                                                 <button
-                                                    onClick={() => handleAssign(t.id)}
-                                                    disabled={isAssigning || assignedRoutineIds?.has(t.id)}
-                                                    className={`w-full rounded-xl py-2.5 text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${assignedRoutineIds?.has(t.id)
+                                                    onClick={() => handleAssign(template.id)}
+                                                    disabled={isAssigning || assignedRoutineIds?.has(template.id)}
+                                                    className={`w-full rounded-xl py-2.5 text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${assignedRoutineIds?.has(template.id)
                                                         ? 'bg-green-500/20 text-green-500 border border-green-500/50'
                                                         : 'bg-gold-500 text-black hover:bg-gold-400 active:scale-95'
                                                         }`}
                                                 >
                                                     {isAssigning ? (
                                                         <Loader2 className="h-4 w-4 animate-spin" />
-                                                    ) : assignedRoutineIds?.has(t.id) ? (
+                                                    ) : assignedRoutineIds?.has(template.id) ? (
                                                         <>
                                                             <CheckCircle2 className="h-4 w-4" />
                                                             Ya Asignada
@@ -529,25 +522,27 @@ export default function AssignRoutineModal({ client, onClose }) {
                     </section>
                 </div>
 
-                {/* View Details Modal for Routine Preview */}
-                exercise={viewingExercise}
-                onClose={() => setViewingExercise(null)}
-            />
+                <ExerciseDetailsModal
+                    exercise={viewingExercise}
+                    onClose={() => setViewingExercise(null)}
+                />
 
-            <ConfirmModal
-                isOpen={confirmConfig.isOpen}
-                onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
-                onConfirm={confirmConfig.onConfirm}
-                title={confirmConfig.title}
-                message={confirmConfig.message}
-                confirmText={confirmConfig.confirmText}
-                cancelText={confirmConfig.cancelText}
-                isDestructive={confirmConfig.isDestructive}
-            />
-        </div>
+                <ConfirmModal
+                    isOpen={confirmConfig.isOpen}
+                    onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
+                    onConfirm={confirmConfig.onConfirm}
+                    title={confirmConfig.title}
+                    message={confirmConfig.message}
+                    confirmText={confirmConfig.confirmText}
+                    cancelText={confirmConfig.cancelText}
+                    isDestructive={confirmConfig.isDestructive}
+                />
 
-            {/* Footer Deco */}
-            <div className="h-1 w-full bg-gradient-to-r from-transparent via-gold-500/20 to-transparent" />
+                {/* Footer Deco */}
+                <div className="h-1 w-full bg-gradient-to-r from-transparent via-gold-500/20 to-transparent" />
+            </div>
         </div>
     )
+
+    return createPortal(modalContent, document.getElementById('portal-root') || document.body)
 }

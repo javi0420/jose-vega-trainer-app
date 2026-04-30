@@ -87,8 +87,12 @@ test.describe('Session Insights E2E (Real Database)', () => {
         await expect(newNotesField).toHaveValue('');
 
         // Cleanup: Discard
+        // Click X button on ActiveWorkoutBar to open the ConfirmModal
         await page.getByTitle('Descartar entrenamiento').first().click();
-        await page.getByRole('button', { name: 'Descartar' }).click();
+        // Two buttons named 'Descartar' coexist (bar icon + modal button).
+        // Wait for the modal heading, then use exact:true to target only the modal button.
+        await expect(page.locator('h3:has-text("¿Descartar entrenamiento?")')).toBeVisible({ timeout: 5000 });
+        await page.getByRole('button', { name: 'Descartar', exact: true }).click();
         await expect(page).toHaveURL(/\/app$/);
     });
 });

@@ -365,6 +365,7 @@ export default function TrainerDashboard() {
             message: 'El cliente seguirá existiendo en la base de datos pero no aparecerá en tu lista.',
             confirmText: 'Desvincular',
             isDestructive: false,
+            closeOnConfirm: false, // Don't close, we want to show the next one
             onConfirm: () => {
                 setConfirmConfig({
                     isOpen: true,
@@ -772,11 +773,13 @@ export default function TrainerDashboard() {
                 isOpen={confirmConfig.isOpen}
                 onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
                 onConfirm={confirmConfig.onConfirm}
+                onCancel={confirmConfig.onCancel}
                 title={confirmConfig.title}
                 message={confirmConfig.message}
                 confirmText={confirmConfig.confirmText}
                 cancelText={confirmConfig.cancelText}
                 isDestructive={confirmConfig.isDestructive}
+                closeOnConfirm={confirmConfig.closeOnConfirm ?? true}
             />
         </div>
     )

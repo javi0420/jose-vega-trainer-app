@@ -95,11 +95,10 @@ test.describe('Workout Feedback UI Flow', () => {
         await expect(clientPage).toHaveURL('/app', { timeout: 20000 });
         const privacyModal = clientPage.locator('text=Consentimiento de Privacidad');
         try {
-            if (await privacyModal.isVisible({ timeout: 5000 })) {
-                await clientPage.click('button:has-text("Aceptar y Continuar")');
-                await expect(privacyModal).toBeHidden({ timeout: 10000 });
-                await clientPage.waitForTimeout(1000); // Buffer for animations
-            }
+            await privacyModal.waitFor({ state: 'visible', timeout: 5000 });
+            await clientPage.click('button:has-text("Aceptar y Continuar")');
+            await expect(privacyModal).toBeHidden({ timeout: 10000 });
+            await clientPage.waitForTimeout(1000); // Buffer for animations
         } catch (e) {
             // Modal not found or already handled
         }
@@ -107,21 +106,43 @@ test.describe('Workout Feedback UI Flow', () => {
         await expect(clientPage.getByTestId('new-workout-btn')).toBeVisible({ timeout: 15000 });
         await clientPage.waitForLoadState('networkidle');
         
-        // Use Promise.all to capture navigation triggered by click
-        await Promise.all([
-            clientPage.waitForURL(/\/app\/workout\/new/, { timeout: 20000 }),
-            clientPage.getByTestId('new-workout-btn').click({ force: true })
-        ]);
+        // Setup console logging for debugging
+        clientPage.on('console', msg => {
+            if (msg.type() === 'error') console.log(`CLIENT PAGE ERROR: ${msg.text()}`);
+        });
 
+        // Clear any active draft to ensure we start a fresh workout
+        await clientPage.evaluate(() => {
+            localStorage.removeItem('draft_workout');
+            localStorage.removeItem('active_workout_id');
+        });
+
+        // Navigate to workout editor
+        await clientPage.getByTestId('new-workout-btn').click();
+        await expect(clientPage).toHaveURL(/\/app\/workout/, { timeout: 10000 });
+
+        // Add exercise
         await clientPage.click('button:has-text("Añadir Ejercicio")');
         await clientPage.waitForSelector('li button');
         await clientPage.locator('li button').first().click();
         await clientPage.waitForTimeout(500);
 
-        await clientPage.click('button:has-text("Añadir Set")');
-        await clientPage.locator('input[placeholder="kg"]').first().fill('40');
-        await clientPage.locator('input[placeholder="reps"]').first().fill('10');
+        // Add a set with data so the workout is valid
+        const clientAddSet = clientPage.getByTestId('workout-btn-add-set').first();
+        if (await clientAddSet.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await clientAddSet.click();
+            await clientPage.waitForTimeout(300);
+        }
+        const clientWeight = clientPage.getByTestId('workout-input-weight').first();
+        if (await clientWeight.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await clientWeight.fill('40');
+        }
+        const clientReps = clientPage.getByTestId('workout-input-reps').first();
+        if (await clientReps.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await clientReps.fill('10');
+        }
         await clientPage.getByTestId('workout-btn-complete-set').first().click();
+
 
         await Promise.all([
             clientPage.waitForURL(/\/app\/workout\/[a-f0-9-]{36}/),

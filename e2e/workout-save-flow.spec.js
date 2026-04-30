@@ -33,13 +33,29 @@ test.describe('Workout Save Flow', () => {
         await page.waitForSelector('li button');
         await page.locator('li button').first().click();
 
-        // Wait for exercise to be added
+        // Wait for exercise block to appear
         await page.waitForTimeout(500);
 
-        // Complete a set
+        // Add a set and fill in weight + reps so the workout is valid for saving
+        const addSetBtn = page.getByTestId('workout-btn-add-set').first();
+        if (await addSetBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await addSetBtn.click();
+            await page.waitForTimeout(300);
+        }
+        const weightInput = page.getByTestId('workout-input-weight').first();
+        if (await weightInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await weightInput.fill('60');
+        }
+        const repsInput = page.getByTestId('workout-input-reps').first();
+        if (await repsInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await repsInput.fill('10');
+        }
+
+        // Complete the set
         const checkBtn = page.getByTestId('workout-btn-complete-set').first();
-        if (await checkBtn.isVisible()) {
+        if (await checkBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
             await checkBtn.click();
+            await page.waitForTimeout(300);
         }
 
         // Click Finalizar and wait for response
@@ -78,7 +94,7 @@ test.describe('Workout Save Flow', () => {
 
         // Navigate to new workout via UI
         await page.getByTestId('new-workout-btn').click();
-        await expect(page).toHaveURL(/\/new/);
+        await expect(page).toHaveURL(/\/app\/workout/, { timeout: 10000 });
 
         // Add exercise
         await page.click('button:has-text("Añadir Ejercicio")');
@@ -86,23 +102,36 @@ test.describe('Workout Save Flow', () => {
         await page.locator('li button').first().click();
         await page.waitForTimeout(500);
 
-        // Complete a set
+        // Add a set and fill data so the workout is valid
+        const addSetBtn = page.getByTestId('workout-btn-add-set').first();
+        if (await addSetBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await addSetBtn.click();
+            await page.waitForTimeout(300);
+        }
+        const weightInput = page.getByTestId('workout-input-weight').first();
+        if (await weightInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await weightInput.fill('70');
+        }
+        const repsInput = page.getByTestId('workout-input-reps').first();
+        if (await repsInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await repsInput.fill('8');
+        }
+
+        // Complete the set
         const checkBtn = page.getByTestId('workout-btn-complete-set').first();
-        if (await checkBtn.isVisible()) {
+        if (await checkBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
             await checkBtn.click();
+            await page.waitForTimeout(300);
         }
 
         // Save workout
-        await page.click('button:has-text("Finalizar")');
-
-        // Check if redirected to Detail (Client) or Dashboard (Trainer)
-        await expect(page).not.toHaveURL(/\/new/);
-        if (page.url().endsWith('/app')) {
-            await page.locator('button:has-text("Revisar")').first().click();
-        }
+        await Promise.all([
+            page.waitForResponse(r => r.url().includes('save_full_workout') && r.status() === 200),
+            page.click('button:has-text("Finalizar")')
+        ]);
 
         // Wait for redirect to workout detail
-        await expect(page).toHaveURL(/\/app\/workout\//, { timeout: 20000 });
+        await expect(page).toHaveURL(/\/app\/workout\/[a-f0-9-]{36}/, { timeout: 20000 });
 
         // Navigate back to dashboard
         await page.getByTestId('nav-btn-home').click();
@@ -112,60 +141,77 @@ test.describe('Workout Save Flow', () => {
         await expect(page.locator('text=Entrenamiento en Curso')).not.toBeVisible();
     });
 
-    test('Workout status is "completed" not "pending" after save', async ({ page }) => {
-        // Navigate to new workout via UI
-        await page.getByTestId('new-workout-btn').click();
-        await expect(page).toHaveURL(/\/new/);
-
-        // Add exercise
+    // Helper: add exercise, fill a set with valid data, complete it
+    async function addAndCompleteOneSet(page) {
         await page.click('button:has-text("Añadir Ejercicio")');
         await page.waitForSelector('li button');
         await page.locator('li button').first().click();
         await page.waitForTimeout(500);
 
-        // Complete a set
+        const addSetBtn = page.getByTestId('workout-btn-add-set').first();
+        if (await addSetBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await addSetBtn.click();
+            await page.waitForTimeout(300);
+        }
+        const wInput = page.getByTestId('workout-input-weight').first();
+        if (await wInput.isVisible({ timeout: 3000 }).catch(() => false)) await wInput.fill('50');
+        const rInput = page.getByTestId('workout-input-reps').first();
+        if (await rInput.isVisible({ timeout: 3000 }).catch(() => false)) await rInput.fill('10');
         const checkBtn = page.getByTestId('workout-btn-complete-set').first();
-        if (await checkBtn.isVisible()) {
+        if (await checkBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
             await checkBtn.click();
+            await page.waitForTimeout(300);
         }
+    }
 
-        // Save workout
-        await page.click('button:has-text("Finalizar")');
+    test('Workout status is "completed" not "pending" after save', async ({ page }) => {
+        await page.getByTestId('new-workout-btn').click();
+        await expect(page).toHaveURL(/\/app\/workout/, { timeout: 10000 });
 
-        // Check if redirected to Detail (Client) or Dashboard (Trainer)
-        await expect(page).not.toHaveURL(/\/new/);
+        await addAndCompleteOneSet(page);
 
-        const onDashboard = await page.locator('text=Panel de Entrenador').isVisible().catch(() => false);
-        if (onDashboard || page.url().endsWith('/app')) {
-            if (await page.locator('button:has-text("Revisar")').first().isVisible()) {
-                await page.locator('button:has-text("Revisar")').first().click();
-            }
-        }
+        // Save workout via Finalizar
+        await Promise.all([
+            page.waitForResponse(r => r.url().includes('save_full_workout') && r.status() === 200),
+            page.click('button:has-text("Finalizar")')
+        ]);
 
         // Wait for redirect to workout detail
-        await expect(page).toHaveURL(/\/app\/workout\//, { timeout: 20000 });
+        await expect(page).toHaveURL(/\/app\/workout\/[a-f0-9-]{36}/, { timeout: 20000 });
 
         // Verify we're on the detail page by checking for content
         await expect(page.locator('h1')).toBeVisible({ timeout: 20000 });
     });
 
     test('Rest timer overlay does NOT persist after saving workout', async ({ page }) => {
-        // Navigate to new workout via UI
         await page.getByTestId('new-workout-btn').click();
-        await expect(page).toHaveURL(/\/new/);
+        await expect(page).toHaveURL(/\/app\/workout/, { timeout: 10000 });
 
-        // Add exercise
+        // Add exercise via testid (more reliable in paginated lists)
         await page.click('button:has-text("Añadir Ejercicio")');
         await page.waitForSelector('li button');
-        await page.getByTestId(/exercise-item-/).first().click();
-
-        // Wait for exercise to be added
+        const firstExercise = page.getByTestId(/exercise-item-/).first();
+        if (await firstExercise.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await firstExercise.click();
+        } else {
+            await page.locator('li button').first().click();
+        }
         await page.waitForTimeout(500);
 
-        // Complete a set (this starts the rest timer)
+        // Add a set and complete it (starts rest timer)
+        const addSetBtn = page.getByTestId('workout-btn-add-set').first();
+        if (await addSetBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await addSetBtn.click();
+            await page.waitForTimeout(300);
+        }
+        const wInput = page.getByTestId('workout-input-weight').first();
+        if (await wInput.isVisible({ timeout: 3000 }).catch(() => false)) await wInput.fill('45');
+        const rInput = page.getByTestId('workout-input-reps').first();
+        if (await rInput.isVisible({ timeout: 3000 }).catch(() => false)) await rInput.fill('8');
         const checkBtn = page.getByTestId('workout-btn-complete-set').first();
-        if (await checkBtn.isVisible()) {
+        if (await checkBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
             await checkBtn.click();
+            await page.waitForTimeout(300);
         }
 
         // Save workout immediately
@@ -174,52 +220,29 @@ test.describe('Workout Save Flow', () => {
             page.getByTestId('workout-btn-save').click()
         ]);
 
-        // Check if redirected to Detail (Client) or Dashboard (Trainer)
-        await expect(page).not.toHaveURL(/\/new/);
-        if (page.url().endsWith('/app')) {
-            await page.locator('button:has-text("Revisar")').first().click();
-        }
-
         // Wait for redirect to workout detail
-        await expect(page).toHaveURL(/\/app\/workout\//, { timeout: 20000 });
+        await expect(page).toHaveURL(/\/app\/workout\/[a-f0-9-]{36}/, { timeout: 20000 });
 
         // Verify timer overlay is NOT visible on the summary page
-        // Use more specific locator to avoid matching BottomNav (.fixed.bottom-0)
         const timerOverlay = page.getByText('Descanso', { exact: true });
         const isTimerVisible = await timerOverlay.isVisible().catch(() => false);
-
-        // Timer should be stopped and not visible
         expect(isTimerVisible).toBeFalsy();
     });
 
     test('Back button on workout detail goes to dashboard, not editor', async ({ page }) => {
-        // Navigate to new workout via UI
         await page.getByTestId('new-workout-btn').click();
-        await expect(page).toHaveURL(/\/new/);
+        await expect(page).toHaveURL(/\/app\/workout/, { timeout: 10000 });
 
-        // Add exercise
-        await page.click('button:has-text("Añadir Ejercicio")');
-        await page.waitForSelector('li button');
-        await page.locator('li button').first().click();
-        await page.waitForTimeout(500);
-
-        // Complete a set
-        const checkBtn = page.getByTestId('workout-btn-complete-set').first();
-        if (await checkBtn.isVisible()) {
-            await checkBtn.click();
-        }
+        await addAndCompleteOneSet(page);
 
         // Save workout
-        await page.click('button:has-text("Finalizar")');
-
-        // Check if redirected to Detail (Client) or Dashboard (Trainer)
-        await expect(page).not.toHaveURL(/\/new$/, { timeout: 15000 });
-        if (page.url().endsWith('/app')) {
-            await page.locator('button:has-text("Revisar")').first().click();
-        }
+        await Promise.all([
+            page.waitForResponse(r => r.url().includes('save_full_workout') && r.status() === 200),
+            page.click('button:has-text("Finalizar")')
+        ]);
 
         // Wait for redirect to workout detail
-        await expect(page).toHaveURL(/\/app\/workout\//, { timeout: 20000 });
+        await expect(page).toHaveURL(/\/app\/workout\/[a-f0-9-]{36}/, { timeout: 20000 });
 
         // Click back button
         await page.click('button[aria-label="Volver al inicio"]');

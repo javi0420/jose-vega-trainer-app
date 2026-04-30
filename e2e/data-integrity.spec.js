@@ -81,16 +81,21 @@ test.describe('Data Integrity & Soft Delete Flow', () => {
         await page.getByTestId('exercise-search-input').fill(exName);
         await page.waitForTimeout(1000); // Wait for filter
 
-        // Handle confirmation dialog
-        page.once('dialog', dialog => dialog.accept());
-
         // Target the specific exercise row delete button
         const exerciseRow = page.locator('div.flex').filter({ hasText: exName }).first();
         const deleteBtn = exerciseRow.locator('button[title="Eliminar"]');
+        await expect(deleteBtn).toBeVisible();
+        await deleteBtn.click();
 
+        // The delete button opens a ConfirmModal (React portal, NOT a native dialog).
+        // Wait for the modal heading, then click the confirm button.
+        // NOTE: Both the exercise row button and the modal button are named 'Eliminar'.
+        // We scope the click to the modal confirm button specifically (red bg, no title attr).
+        await expect(page.locator('h3:has-text("¿Eliminar ejercicio?")')).toBeVisible({ timeout: 5000 });
+        const modalConfirmBtn = page.locator('button.bg-red-500:has-text("Eliminar")');
         await Promise.all([
             page.waitForResponse(resp => resp.url().includes('/rest/v1/exercises') && resp.ok()),
-            deleteBtn.click()
+            modalConfirmBtn.click()
         ]);
         console.log('Exercise archived.');
 

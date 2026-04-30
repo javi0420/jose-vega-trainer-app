@@ -1,5 +1,6 @@
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { X, GripVertical, Trash2, ArrowUpDown } from 'lucide-react'
+import { t } from '../utils/translations'
 
 export default function ReorderExercisesModal({ isOpen, onClose, blocks, onReorder, onRemoveBlock }) {
     if (!isOpen) return null
@@ -68,7 +69,7 @@ export default function ReorderExercisesModal({ isOpen, onClose, blocks, onReord
                                                         {block.exercises.map((ex, exIdx) => (
                                                             <div key={ex.id || exIdx} className="flex items-center gap-2">
                                                                 <span className="text-sm font-black text-white truncate uppercase italic tracking-tight">
-                                                                    {ex.name}
+                                                                    {ex.name_es || ex.name}
                                                                 </span>
                                                                 {block.exercises.length > 1 && (
                                                                     <span className="text-[9px] font-black text-gold-500/50">
@@ -78,7 +79,7 @@ export default function ReorderExercisesModal({ isOpen, onClose, blocks, onReord
                                                             </div>
                                                         ))}
                                                         <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-1">
-                                                            {block.type === 'superset' ? 'Superset' : block.exercises[0]?.muscle_group || 'General'}
+                                                            {block.type === 'superset' ? 'Superset' : t(block.exercises[0]?.target_muscle || block.exercises[0]?.body_part || block.exercises[0]?.muscle_group || 'General')}
                                                         </span>
                                                     </div>
                                                 </div>

@@ -18,9 +18,9 @@ export default function Progress() {
         async function fetchExercises() {
             const { data } = await supabase
                 .from('exercises')
-                .select('id, name')
-                .order('name');
-            if (data) setExercises(data);
+                .select('id, name, name_es')
+                .order('name_es');
+            if (data) setExercises(data.map(ex => ({ ...ex, name: ex.name_es || ex.name })));
         }
         fetchExercises();
     }, []);

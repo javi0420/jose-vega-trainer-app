@@ -24,6 +24,9 @@ export default function WorkoutEditor() {
     const navigate = useNavigate()
     const location = useLocation()
 
+    const [isSaving, setIsSaving] = useState(false)
+    const [isRedirecting, setIsRedirecting] = useState(false)
+
     // State for search must be defined BEFORE the hook use
     const [searchTerm, setSearchTerm] = useState('')
 
@@ -34,8 +37,6 @@ export default function WorkoutEditor() {
     const { startTimer, stopTimer, isActive } = useTimer()
 
     // Local State
-    const [isSaving, setIsSaving] = useState(false)
-    const [isRedirecting, setIsRedirecting] = useState(false)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
     const [isAssignedModalOpen, setIsAssignedModalOpen] = useState(false)

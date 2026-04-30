@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { X, Search, Plus, RefreshCw } from 'lucide-react'
 import { useExercises } from '../hooks/useExercises'
 import { generateUUID } from '../utils/uuid'
+import { t } from '../utils/translations'
 
 export default function ReplaceExerciseModal({ isOpen, onClose, onReplace, activeBlockId, exerciseIndex }) {
     const [searchTerm, setSearchTerm] = useState('')
@@ -63,10 +64,10 @@ export default function ReplaceExerciseModal({ isOpen, onClose, onReplace, activ
                                 className="group flex items-center gap-4 rounded-2xl p-4 text-left bg-white/5 border border-white/5 hover:bg-gold-500/10 hover:border-gold-500/30 transition-all active:scale-[0.98]"
                             >
                                 <div className="flex-1">
-                                    <p className="font-black text-white group-hover:text-gold-500 transition-colors uppercase italic tracking-tight">{ex.name}</p>
-                                    {ex.muscle_group && (
+                                    <p className="font-black text-white group-hover:text-gold-500 transition-colors uppercase italic tracking-tight">{ex.name_es || ex.name}</p>
+                                    {(ex.muscle_group || ex.target_muscle || ex.body_part) && (
                                         <span className="inline-block mt-1 rounded-lg bg-black/40 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-gray-500 border border-white/5 group-hover:border-gold-500/20">
-                                            {ex.muscle_group}
+                                            {t(ex.target_muscle || ex.body_part || ex.muscle_group)}
                                         </span>
                                     )}
                                 </div>

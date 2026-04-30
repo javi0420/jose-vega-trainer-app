@@ -349,16 +349,20 @@ test.describe('P1: Archived exercises remain visible in routines', () => {
         const exerciseRow = page.locator('div.group').filter({ hasText: exName }).first();
         await expect(exerciseRow).toBeVisible({ timeout: 10000 });
 
-        // Handle confirmation dialog
-        page.once('dialog', dialog => dialog.accept());
-
-        // Target the specific exercise row delete button
+        // Target the specific exercise row delete button and click it
+        // This opens a ConfirmModal (React portal), NOT a native dialog
         const deleteBtn = exerciseRow.locator('button[title="Eliminar"]');
         await expect(deleteBtn).toBeVisible();
+        await deleteBtn.click();
 
+        // Wait for ConfirmModal to appear, then confirm
+        // NOTE: Both the exercise row button and the modal confirm button are named 'Eliminar'.
+        // Scope the click to the modal confirm button (has bg-red-500 class, no title attr).
+        await expect(page.locator('h3:has-text("¿Eliminar ejercicio?")')).toBeVisible({ timeout: 5000 });
+        const modalConfirmBtn = page.locator('button.bg-red-500:has-text("Eliminar")');
         await Promise.all([
             page.waitForResponse(resp => resp.url().includes('/rest/v1/exercises') && resp.ok()),
-            deleteBtn.click()
+            modalConfirmBtn.click()
         ]);
         console.log('✓ Exercise archived');
 

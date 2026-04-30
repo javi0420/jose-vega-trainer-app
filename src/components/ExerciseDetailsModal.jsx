@@ -1,11 +1,12 @@
 import { X } from 'lucide-react'
+import { createPortal } from 'react-dom'
 import { t } from '../utils/translations'
 
 export default function ExerciseDetailsModal({ exercise, onClose }) {
     if (!exercise) return null
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+    const modalContent = (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-gray-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg rounded-[2.5rem] border border-gray-800 bg-gray-900 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] shadow-gold-500/10">
 
                 {/* Header / Hero GIF */}
@@ -54,14 +55,14 @@ export default function ExerciseDetailsModal({ exercise, onClose }) {
                         )}
                     </div>
 
-                    {( (exercise.instructions && exercise.instructions.length > 0) || (exercise.instructions_es && exercise.instructions_es.length > 0) ) && (
+                    {((exercise.instructions && exercise.instructions.length > 0) || (exercise.instructions_es && exercise.instructions_es.length > 0)) && (
                         <div className="space-y-3">
                             <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest border-b border-gray-800 pb-2 mb-3">
                                 Instrucciones
                             </h3>
                             <ol className="list-decimal list-outside ml-4 space-y-3 text-gray-300 text-sm leading-relaxed">
-                                {(exercise.instructions_es && exercise.instructions_es.length > 0 
-                                    ? exercise.instructions_es 
+                                {(exercise.instructions_es && exercise.instructions_es.length > 0
+                                    ? exercise.instructions_es
                                     : (exercise.instructions || [])
                                 ).map((step, idx) => (
                                     <li key={idx} className="pl-2 marker:text-gold-500 marker:font-bold">
@@ -75,4 +76,6 @@ export default function ExerciseDetailsModal({ exercise, onClose }) {
             </div>
         </div>
     )
+
+    return createPortal(modalContent, document.getElementById('portal-root') || document.body)
 }

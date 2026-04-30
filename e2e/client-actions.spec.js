@@ -55,8 +55,10 @@ test.describe('Client Actions (Action Menu)', () => {
         const row = page.locator('[data-testid^="client-card-"]').filter({ hasText: clientName }).first();
         await row.getByTestId('actions-trigger').click({ force: true });
 
-        page.once('dialog', dialog => dialog.accept());
         await page.getByTestId('action-deactivate').click({ force: true });
+        
+        // Handle custom ConfirmModal
+        await page.click('button:has-text("DESACTIVAR")');
 
         // Check if row has opacity-50
         await expect(row).toHaveClass(/opacity-50/);

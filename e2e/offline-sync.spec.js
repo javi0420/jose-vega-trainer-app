@@ -35,15 +35,13 @@ test.describe('Offline Support & Sync', () => {
         await page.click('button:has-text("Set")');
         await page.locator('input[placeholder="kg"]').first().fill('100');
         await page.locator('input[placeholder="reps"]').first().fill('5');
+        await page.click('[data-testid="workout-btn-complete-set"]');
 
         // 4. GO OFFLINE
         await context.setOffline(true);
         await page.waitForTimeout(2000); // Allow efficient useNetworkStatus to update
 
         // 5. Save Workout
-        // Handle "No sets completed" alert if it appears
-        page.on('dialog', dialog => dialog.accept());
-
         await page.click('button:has-text("Finalizar")');
 
         // 6. Verify Offline Toast

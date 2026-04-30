@@ -43,41 +43,42 @@ test.describe('Navigation Flow (Trainer)', () => {
         await page.getByPlaceholder('Buscar cliente...').fill(clientEmail);
         await page.waitForTimeout(1000);
 
-        const clientCard = page.locator('div.group').filter({ hasText: clientEmail }).first();
-        await clientCard.scrollIntoViewIfNeeded();
-        await expect(clientCard).toBeVisible();
-        await clientCard.locator('button[title="Gestionar Rutinas"]').click();
+        // Use 'row' role (rendered as <tr> with role=row) or target by visible text
+        const clientRow = page.locator(`[role="row"]:has-text("${clientEmail}")`).first();
+        await clientRow.scrollIntoViewIfNeeded();
+        await expect(clientRow).toBeVisible();
+        // Click the "Gestionar Rutinas" button within the row (uses title attribute, not text content)
+        await clientRow.locator('button[title="Gestionar Rutinas"]').click();
 
-        // 3. Create a routine from scratch
-        // Always listen for dialogs (like window.confirm after creation)
-        page.on('dialog', async dialog => {
-            if (dialog.type() === 'prompt') {
-                await dialog.accept(`Routine ${uniqueId}`);
-            } else {
-                await dialog.accept(); // For window.confirm ("Ir a la edición?")
-            }
-        });
-
-        await page.click('button:has-text("Crear desde cero")');
+        // 3. Wait for the Routine Management panel/modal to open
+        // "Crear desde cero" appears in the AssignRoutineModal that slides open
+        const crearBtn = page.locator('button:has-text("Crear desde cero")');
+        await expect(crearBtn).toBeVisible({ timeout: 10000 });
+        await crearBtn.click();
         
-        // Handle in-app modal for routine name
+        // The form expands inline: fill name and confirm
         const nameInput = page.locator('input[value="Nueva Rutina"]');
-        if (await nameInput.isVisible({ timeout: 5000 })) {
-            await nameInput.fill(`Routine ${uniqueId}`);
-            await page.click('button:has-text("Confirmar Creación")');
-        }
+        await expect(nameInput).toBeVisible({ timeout: 5000 });
+        await nameInput.fill(`Routine ${uniqueId}`);
+        await page.locator('button:has-text("Confirmar Creación")').click();
         
-        // Wait for redirect to Routine Editor
-        await page.waitForURL(/\/app\/routines\/.+/, { timeout: 20000 });
+        // After creation, app shows a ConfirmModal asking:
+        // "La rutina se ha creado y asignado con éxito. ¿Deseas ir a editarla ahora?"
+        // We must click "Ir a editar" to navigate to /app/routines/{id}
+        const irAEditarBtn = page.locator('button:has-text("Ir a editar")');
+        await expect(irAEditarBtn).toBeVisible({ timeout: 10000 });
+        await irAEditarBtn.click();
+
+        // Wait for redirect to Routine Editor (client-side navigation)
+        await expect(page).toHaveURL(/\/app\/routines\/.+/, { timeout: 20000 });
         await page.waitForLoadState('networkidle');
 
         // 4. Save the routine
         const saveBtn = page.getByRole('button', { name: 'GUARDAR' }).or(page.locator('button:has-text("GUARDAR")'));
         await saveBtn.click();
 
-        // 5. Verify redirection to Dashboard (/app)
-        await page.waitForFunction(() => window.location.pathname.startsWith('/app'), { timeout: 30000 });
-        await expect(page).toHaveURL(/\/app/);
+        // 5. Verify redirection back to Dashboard
+        await expect(page).toHaveURL(/\/app/, { timeout: 30000 });
 
         // 6. Verify client is pre-selected in the Feed
         await expect(page.locator('text=Filtrando por: ' + clientName).first()).toBeVisible();

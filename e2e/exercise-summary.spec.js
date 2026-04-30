@@ -96,9 +96,14 @@ test.describe('Exercise Summary Display Fix', () => {
         await addSetBtn.click();
         await page.waitForTimeout(500);
 
-        // 5. Save (Handle confirmation dialog for 0 completed sets)
-        page.once('dialog', dialog => dialog.accept());
+        // 5. Save (Handle custom ConfirmModal for 0 completed sets)
+        // NOTE: The app uses a React portal ConfirmModal, not a native browser dialog
         await page.getByTestId('workout-btn-save').click();
+        // Handle the "¿Guardar sin completar?" custom modal if it appears
+        const saveModal = page.locator('h3:has-text("¿Guardar sin completar?")');
+        if (await saveModal.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await page.locator('button:has-text("Guardar")').last().click();
+        }
 
         // 6. Verification
         await expect(page).toHaveURL(/\/app\/workout\//, { timeout: 30000 });
@@ -153,8 +158,13 @@ test.describe('Exercise Summary Display Fix', () => {
 
         await page.getByTestId('workout-btn-add-set').last().click();
 
-        // 5. Save
+        // 5. Save (handle ConfirmModal for incomplete sets)
         await page.getByTestId('workout-btn-save').click();
+        // Handle the "¿Guardar sin completar?" custom modal if it appears
+        const saveModal2 = page.locator('h3:has-text("¿Guardar sin completar?")');
+        if (await saveModal2.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await page.locator('button:has-text("Guardar")').last().click();
+        }
 
         // 6. Verification
         await expect(page).toHaveURL(/\/app\/workout\//, { timeout: 30000 });

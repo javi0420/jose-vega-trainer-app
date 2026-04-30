@@ -17,6 +17,9 @@ export default function RoutineDetail() {
     const navigate = useNavigate();
     const { user } = useAuth();
 
+    const [isSaving, setIsSaving] = useState(false);
+    const [isRedirecting, setIsRedirecting] = useState(false);
+
     // Modal State - Declarar searchTerm ANTES de usarlo en useExercises
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -28,8 +31,6 @@ export default function RoutineDetail() {
     const [routine, setRoutine] = useState(null);
     const [blocks, setBlocks] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [isSaving, setIsSaving] = useState(false);
-    const [isRedirecting, setIsRedirecting] = useState(false);
 
     // Modal State (resto)
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -170,7 +171,7 @@ export default function RoutineDetail() {
         };
         window.addEventListener('beforeunload', handleBeforeUnload);
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-    }, [blocks, editedName, editedDescription, editedCategory, editedTags, id, isLoading, routine]);
+    }, [blocks, editedName, editedDescription, editedCategory, editedTags, id, isLoading, routine, isSaving, isRedirecting]);
 
     // HANDLERS
 
@@ -601,56 +602,22 @@ export default function RoutineDetail() {
                     </div>
                 )
             }
-            {/* Deletion Summary Modal */}
-            {isDeleteModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md animate-in fade-in">
-                    <div className="w-full max-w-sm rounded-[2.5rem] bg-gray-900 border border-white/10 p-8 shadow-2xl animate-in zoom-in-95">
-                        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/10 text-red-500 mx-auto">
-                            <Trash2 className="h-8 w-8" />
-                        </div>
+            <ConfirmModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={handleDelete}
+                title="¿Eliminar Plantilla?"
+                message="Esta acción no se puede deshacer y la plantilla desaparecerá de tu catálogo."
+                confirmText="Confirmar Borrado"
+                isDestructive={true}
+            />
 
-                        <h3 className="text-xl font-black text-white text-center uppercase tracking-tight mb-2">Eliminar Plantilla</h3>
-                        <p className="text-xs text-center text-gray-500 font-bold uppercase tracking-widest mb-8">Esta acción no se puede deshacer</p>
-
-                        <div className="space-y-4 mb-8 bg-white/5 rounded-2xl p-6 border border-white/5">
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Nombre</span>
-                                <span className="text-xs font-bold text-white truncate max-w-[150px]">{editedName}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Contenido</span>
-                                <span className="text-xs font-bold text-white">{blocks.length} Bloques</span>
-                            </div>
-                            <div className="pt-2 border-t border-white/5">
-                                <p className="text-[9px] text-gray-500 leading-relaxed font-bold italic">
-                                    Nota: Los clientes que ya tienen esta rutina asignada no se verán afectados.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col gap-3">
-                            <button
-                                onClick={handleDelete}
-                                className="w-full rounded-2xl bg-red-600 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-red-500/20 active:scale-95 transition-all"
-                            >
-                                Confirmar Borrado
-                            </button>
-                            <button
-                                onClick={() => setIsDeleteModalOpen(false)}
-                                className="w-full rounded-2xl bg-gray-800 py-4 text-sm font-black uppercase tracking-widest text-gray-400 hover:text-white transition-all"
-                            >
-                                Cancelar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
             <ConfirmModal
                 isOpen={isDraftConfirmOpen}
                 onClose={() => {
                     setIsDraftConfirmOpen(false);
                     localStorage.removeItem(`routine_draft_${id}`);
-                    window.location.reload(); 
+                    window.location.reload();
                 }}
                 onConfirm={() => {
                     if (pendingDraft) {

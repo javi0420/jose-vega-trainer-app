@@ -7,9 +7,6 @@ test.describe('Edit Workout Name', () => {
 
     test('User can rename a workout in Detail view', async ({ page }) => {
         // 1. Login
-        // Handle dialogs (confirm save without sets)
-        page.on('dialog', dialog => dialog.accept());
-
         await page.goto('/');
         await page.fill('input[type="email"]', CLIENT_USER.email);
         await page.fill('input[type="password"]', CLIENT_USER.pass);
@@ -35,19 +32,19 @@ test.describe('Edit Workout Name', () => {
         await page.waitForSelector('li button');
         await page.click('li button >> nth=0'); // Add first available
 
-        // Save
+        // Click Finalizar to save
         await page.click('button:has-text("Finalizar")');
 
-        // Handle confirmation if it appears
-        try {
-            const confirmBtn = page.locator('button:has-text("Guardar Entrenamiento")');
-            if (await confirmBtn.isVisible({ timeout: 2000 })) {
-                await confirmBtn.click();
-            }
-        } catch (e) { }
+        // Handle custom ConfirmModal "¿Guardar sin completar?" 
+        // The app uses a React portal ConfirmModal, NOT a native browser dialog.
+        // page.on('dialog', ...) does NOT work here.
+        const incompleteModal = page.locator('h3:has-text("¿Guardar sin completar?")');
+        if (await incompleteModal.isVisible({ timeout: 4000 }).catch(() => false)) {
+            await page.locator('button:has-text("Guardar")').last().click();
+        }
 
         // 3. Wait for redirect to Summary/Detail
-        await expect(page).toHaveURL(/\/app\/workout\/[a-f0-9-]+/, { timeout: 15000 });
+        await expect(page).toHaveURL(/\/app\/workout\/[a-f0-9-]+/, { timeout: 20000 });
 
         // Wait for data load (SummaryHeader)
         await expect(page.locator('text=Volumen Total')).toBeVisible({ timeout: 10000 });

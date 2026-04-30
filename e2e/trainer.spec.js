@@ -136,16 +136,16 @@ test.describe('Trainer Workflow Suite', () => {
         const editedRow = page.getByTestId(`client-card-${newName}`).last();
         await editedRow.getByTestId('actions-trigger').click({ force: true });
 
-        // Handle delete confirmation dialogs
-        page.on('dialog', dialog => {
-            console.log(`[Delete Test] Accepting dialog: ${dialog.message()}`);
-            dialog.accept();
-        });
-
         // Wait for removal
+        await page.getByTestId('action-delete').click({ force: true });
+        
+        // Handle first modal: Desvincular
+        await page.click('button:has-text("Desvincular")');
+        
+        // Handle second modal: ELIMINAR PERMANENTEMENTE
         await Promise.all([
             page.waitForResponse(resp => resp.url().includes('/rest/v1/rpc/delete_client_completely') && resp.ok(), { timeout: 15000 }),
-            page.getByTestId('action-delete').click({ force: true })
+            page.click('button:has-text("ELIMINAR TODO")')
         ]);
 
         await expect(page.locator(`text=${newName}`)).not.toBeVisible();
@@ -194,10 +194,13 @@ test.describe('Trainer Workflow Suite', () => {
         const deleteBtn = page.locator('button[title="Eliminar"]').first();
         await expect(deleteBtn).toBeVisible();
 
-        // Wait for DELETE response
+        // Click trash button to open modal
+        await deleteBtn.click()
+
+        // Click "Eliminar" in ConfirmModal and wait for response
         await Promise.all([
             page.waitForResponse(resp => resp.url().includes('/rest/v1/exercises') && resp.status() === 204, { timeout: 10000 }),
-            deleteBtn.click()
+            page.click('button:has-text("Eliminar")')
         ]);
 
         // Clear search field to see full list and verify deletion

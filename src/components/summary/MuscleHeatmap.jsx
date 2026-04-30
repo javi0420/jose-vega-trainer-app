@@ -1,4 +1,5 @@
 import { clsx } from 'clsx'
+import { t } from '../../utils/translations'
 
 export default function MuscleHeatmap({ exercises }) {
     // Extract unique muscle groups
@@ -30,7 +31,7 @@ export default function MuscleHeatmap({ exercises }) {
                                 : "bg-gray-800 text-gray-400 border border-gray-700"
                         )}
                     >
-                        {muscle} <span className="opacity-60 text-[10px] ml-1">x{count}</span>
+                        {t(muscle)} <span className="opacity-60 text-[10px] ml-1">x{count}</span>
                     </div>
                 ))}
             </div>

@@ -1,7 +1,17 @@
 import { X, AlertTriangle } from 'lucide-react'
 import { createPortal } from 'react-dom'
 
-export default function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText = 'Confirmar', cancelText = 'Cancelar', isDestructive = false }) {
+export default function ConfirmModal({ 
+    isOpen, 
+    onClose, 
+    onConfirm, 
+    title, 
+    message, 
+    confirmText = 'Confirmar', 
+    cancelText = 'Cancelar', 
+    isDestructive = false,
+    closeOnConfirm = true 
+}) {
     if (!isOpen) return null
 
     const modalContent = (
@@ -31,7 +41,7 @@ export default function ConfirmModal({ isOpen, onClose, onConfirm, title, messag
                         <button
                             onClick={() => {
                                 onConfirm()
-                                onClose()
+                                if (closeOnConfirm) onClose()
                             }}
                             className={`flex-1 h-12 rounded-xl text-sm font-bold transition-all active:scale-95 ${
                                 isDestructive 

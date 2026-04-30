@@ -91,8 +91,13 @@ test.describe('Mobile Navigation (Bottom Tab Bar)', () => {
         await expect(nav).toBeVisible();
 
         // Check vertical stacking and ensure the X button works
+        // Click the discard button in the ActiveWorkoutBar to open the ConfirmModal
         await page.getByTitle('Descartar entrenamiento').click();
-        await page.getByRole('button', { name: 'Descartar' }).click();
+        
+        // Two buttons named 'Descartar' exist simultaneously (bar icon + modal button).
+        // Use exact: true to target only the ConfirmModal button, preventing strict-mode violation.
+        await expect(page.locator('h3:has-text("¿Descartar entrenamiento?")')).toBeVisible({ timeout: 5000 });
+        await page.getByRole('button', { name: 'Descartar', exact: true }).click();
         await expect(activeBar).not.toBeVisible();
     });
 });

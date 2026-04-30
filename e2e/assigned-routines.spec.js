@@ -209,11 +209,9 @@ test.describe('Assigned Routines Flow', () => {
         await expect(unassignButton).toBeVisible();
 
         // Click unassign and handle confirm
-        page.once('dialog', dialog => {
-            console.log(`Dialog message: ${dialog.message()}`);
-            dialog.accept();
-        });
         await unassignButton.click();
+        // Handle custom ConfirmModal
+        await page.click('button:has-text("Desasignar")');
 
         // Wait for list update
         await page.waitForTimeout(1000);
